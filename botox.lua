@@ -1,4 +1,4 @@
--- Phoenix Hub | إصدار مراقب الـ AI الداخلي والهيت بوكس الثنائي
+-- Phoenix Hub | إصدار مراقب الـ AI الداخلي والهيت بوكس الثنائي (مصحح التسمية)
 shared.PH = shared.PH or {}
 
 local Players = game:GetService("Players")
@@ -84,7 +84,7 @@ MainCorner.Parent = MainFrame
 MainStroke.Parent = MainFrame
 MainStroke.Thickness = 1.8
 
--- تأثير الـ RGB الانسيابي الفخم على أطراف اللوحة والزر العائم
+-- تأثير الـ RGB الانسيابي الفخم
 RunService.RenderStepped:Connect(function()
     local hue = (tick() % 6) / 6
     local chromaColor = Color3.fromHSV(hue, 0.9, 1)
@@ -111,15 +111,24 @@ TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 
 local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
 ContentFrame.Parent = MainFrame
 ContentFrame.Position = UDim2.new(0, 0, 0, 70)
 ContentFrame.Size = UDim2.new(1, 0, 1, -70)
 ContentFrame.BackgroundTransparency = 1
 
+-- إنشاء الصفحات وتسميتها بشكل صريح لحل مشكلة الاختفاء
 local MovePage = Instance.new("ScrollingFrame")
+MovePage.Name = "MovePage"
+
 local VisPage = Instance.new("ScrollingFrame")
+VisPage.Name = "VisPage"
+
 local CombatPage = Instance.new("ScrollingFrame")
-local AILogPage = Instance.new("ScrollingFrame") -- الخانة الجديدة المخصصة لمراقب الـ AI
+CombatPage.Name = "CombatPage"
+
+local AILogPage = Instance.new("ScrollingFrame")
+AILogPage.Name = "AILogPage"
 
 local pages = {MovePage, VisPage, CombatPage, AILogPage}
 for _, page in pairs(pages) do
@@ -137,11 +146,10 @@ for _, page in pairs(pages) do
 end
 MovePage.Visible = true
 
--- تنسيق صفحة الـ AI لتستقبل الإشعارات المنظمة بشكل تنازلي
 local AILogLayout = AILogPage:FindFirstChildOfClass("UIListLayout")
 AILogLayout.Padding = UDim.new(0, 5)
 
--- [دالة تحويل الإشعارات إلى سجلات داخل قائمة الـ AI بثيم ملكي: أسود، أحمر، أبيض]
+-- دالة تحويل الإشعارات إلى سجلات داخل قائمة الـ AI بثيم ملكي
 shared.PH.AINotify = function(message, isWarning)
     local LogRow = Instance.new("Frame")
     local LogCorner = Instance.new("UICorner")
@@ -149,7 +157,7 @@ shared.PH.AINotify = function(message, isWarning)
     local LogText = Instance.new("TextLabel")
     
     LogRow.Size = UDim2.new(0.95, 0, 0, 50)
-    LogRow.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- أسود خالص
+    LogRow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     LogRow.Parent = AILogPage
     
     LogCorner.CornerRadius = UDim.new(0, 6)
@@ -158,9 +166,9 @@ shared.PH.AINotify = function(message, isWarning)
     LogStroke.Parent = LogRow
     LogStroke.Thickness = 1.5
     if isWarning then
-        LogStroke.Color = Color3.fromRGB(255, 0, 0) -- إطار أحمر عند التحذير من ميزة مكشوفة
+        LogStroke.Color = Color3.fromRGB(255, 0, 0)
     else
-        LogStroke.Color = Color3.fromRGB(255, 255, 255) -- إطار أبيض عند الميزات السليمة والآمنة
+        LogStroke.Color = Color3.fromRGB(255, 255, 255)
     end
     
     LogText.Parent = LogRow
@@ -169,12 +177,11 @@ shared.PH.AINotify = function(message, isWarning)
     LogText.BackgroundTransparency = 1
     LogText.Font = Enum.Font.SourceSansBold
     LogText.TextSize = 12
-    LogText.TextColor3 = Color3.fromRGB(255, 255, 255) -- نص أبيض ناصع وواضح
+    LogText.TextColor3 = Color3.fromRGB(255, 255, 255)
     LogText.TextWrapped = true
     LogText.TextXAlignment = Enum.TextXAlignment.Center
     LogText.Text = "[" .. os.date("%X") .. "] " .. message
     
-    -- جعل السجل التلقائي يرتفع لأعلى ليرى المستخدم أحدث التنبيهات دائماً
     LogRow.LayoutOrder = -tick()
     AILogPage.CanvasPosition = Vector2.new(0, 0)
 end
@@ -182,7 +189,7 @@ end
 local function createTabBtn(text, pos, targetPage)
     local btn = Instance.new("TextButton")
     btn.Parent = TabBar
-    btn.Size = UDim2.new(0.25, 0, 1, 0) -- تقسيم متساوي للأربع خانات
+    btn.Size = UDim2.new(0.25, 0, 1, 0)
     btn.Position = pos
     btn.BackgroundTransparency = 1
     btn.Text = text
@@ -202,7 +209,6 @@ createTabBtn("الرؤية ESP", UDim2.new(0.25, 0, 0, 0), VisPage)
 createTabBtn("القتال المحكم", UDim2.new(0.5, 0, 0, 0), CombatPage)
 createTabBtn("مراقب الـ AI", UDim2.new(0.75, 0, 0, 0), AILogPage)
 
--- تقرير فحص الحماية وبدء تشغيل السجل فور تفعيل السكربت ليوضح المسموح والممنوع في الماب
 task.spawn(function()
     task.wait(1)
     if shared.PH.MapAntiCheatLevel == "High" then
@@ -214,7 +220,7 @@ task.spawn(function()
     end
 end)
 
--- لوب فيزيائي مدمج للسرعة وجدار حماية الـ AI التكيفي
+-- لوب الحركة الفيزيائي للسرعة
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -244,10 +250,9 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- اللوب الفيزيائي الخاص بالهيت بوكس الأول والثاني (البديل) دون المساس بأي ميزة أخرى
+-- لوب الهيت بوكس الثنائي المتطور
 local OriginalHeadSizes = {}
 RunService.Heartbeat:Connect(function()
-    -- [طريقة الهيت بوكس 1 - تعديل الـ HumanoidRootPart الأصلي]
     pcall(function()
         if shared.PH.HitboxEnabled then
             for _, p in pairs(Players:GetPlayers()) do
@@ -262,14 +267,13 @@ RunService.Heartbeat:Connect(function()
         end
     end)
     
-    -- [طريقة الهيت بوكس 2 البديلة - تعديل الـ Head وتخزين الحجم الأصلي لحمايتك]
     pcall(function()
         if shared.PH.HitboxEnabled2 then
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
                     local head = p.Character.Head
                     if not OriginalHeadSizes[p] then
-                        OriginalHeadSizes[p] = head.Size -- حفظ الحجم الأصلي لمنع تدمير الماب
+                        OriginalHeadSizes[p] = head.Size
                     end
                     head.Size = Vector3.new(shared.PH.HitboxSize2, shared.PH.HitboxSize2, shared.PH.HitboxSize2)
                     head.Transparency = 0.5
@@ -277,7 +281,6 @@ RunService.Heartbeat:Connect(function()
                 end
             end
         else
-            -- إعادة الأشكال لأحجامها الطبيعية فوراً عند قفل الزر
             for p, size in pairs(OriginalHeadSizes) do
                 if p.Character and p.Character:FindFirstChild("Head") then
                     p.Character.Head.Size = size
@@ -289,7 +292,7 @@ RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- نوكليب آمن ومتوافق مع قفز الجوال
+-- نوكليب آمن للجوال
 RunService.Stepped:Connect(function()
     pcall(function()
         if shared.PH.NoclipEnabled and LocalPlayer.Character then
@@ -302,7 +305,7 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- أنيميشن فتح وإغلاق اللوحة الرئيسية
+-- فتح وإغلاق اللوحة
 ToggleButton.MouseButton1Click:Connect(function()
     if MainFrame.Visible then
         MainFrame:TweenSize(UDim2.new(0, 350, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
@@ -421,16 +424,18 @@ local function createButton(parent, text, callback)
     btn.MouseButton1Click:Connect(callback)
 end
 
--- استدعاء صفحات لوحة التحكم المفتوحة مسبقاً
+-- استدعاء عناصر الواجهة بالأسماء الصحيحة والمصححة لمنع التعليق واختفاء الأزرار
 local ScreenGui = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 local MainFrame = ScreenGui:WaitForChild("PhoenixHub_AI_Dashboard"):WaitForChild("MainFrame")
 local ContentFrame = MainFrame:WaitForChild("ContentFrame")
-local MovePage = ContentFrame:WaitForChild("ScrollingFrame")
-local VisPage = ContentFrame:WaitForChild("ScrollingFrame2")
-local CombatPage = ContentFrame:WaitForChild("ScrollingFrame3")
+
+local MovePage = ContentFrame:WaitForChild("MovePage")
+local VisPage = ContentFrame:WaitForChild("VisPage")
+local CombatPage = ContentFrame:WaitForChild("CombatPage")
+local AILogPage = ContentFrame:WaitForChild("AILogPage")
 
 -----------------------------------------------------------------------------------------
--- [1. تعبئة عناصر صفحة الحركة والـ AI مع نظام المراقبة الصادق لتفادي الحظر والشكاوى]
+-- [1. تعبئة عناصر صفحة الحركة والـ AI]
 -----------------------------------------------------------------------------------------
 createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
     local num = tonumber(Value)
@@ -543,9 +548,9 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. عناصر صفحة القتال المتقدمة - الهيت بوكس الثنائي لمنع التعطل في جميع المابات]
+-- [3. عناصر صفحة القتال - نظام الهيت بوكس الثنائي لمنع الاختفاء والتعطل]
 -----------------------------------------------------------------------------------------
--- الهيت بوكس الأول (العام):
+-- الهيت بوكس الأول (الجذع العام)
 createTextbox(CombatPage, "حجم الهيت بوكس 1 (العام)", "2", function(Value)
     shared.PH.HitboxSize = tonumber(Value) or 2
 end)
@@ -554,14 +559,14 @@ createToggle(CombatPage, "تفعيل الهيت بوكس 1", function(Value)
     shared.PH.HitboxEnabled = Value
     if Value then 
         if shared.PH.MapAntiCheatLevel == "High" then
-            shared.PH.AINotify("⚠️ تنبيه الحماية: الهيت بوكس الأول قد يكون مكشوفاً هنا! إذا تم طردك استخدم الهيت بوكس الثاني البديل فوراُ.", true)
+            shared.PH.AINotify("⚠️ تنبيه الحماية: الهيت بوكس الأول قد يكون مكشوفاً هنا! إذا تم طردك استخدم الهيت بوكس الثاني البديل فوراً.", true)
         else
             shared.PH.AINotify("تفعيل: الهيت بوكس الأول (الجذع العام) نشط وآمن في هذا الماب ✅", false)
         end
     end
 end)
 
--- الهيت بوكس الثاني البديل (الرأس) لحل مشكلة عدم اشتغال الميزة في بعض المابات:
+-- الهيت بوكس الثاني (الرأس البديل) لمنع التعطل في أي ماب
 createTextbox(CombatPage, "مربع تكبير الهيت بوكس 2 (البديل)", "2", function(Value)
     shared.PH.HitboxSize2 = tonumber(Value) or 2
 end)
@@ -573,7 +578,7 @@ createToggle(CombatPage, "تفعيل الهيت بوكس 2 (البديل)", func
     end
 end)
 
--- بقية ميزات القتال (الآيم بوت بدون أي تغيير أو تخريب)
+-- ميزات القتال الأصلية كما هي تماماً دون أي مساس
 createToggle(CombatPage, "تفعيل الآيم بوت (Aimbot)", function(Value)
     shared.PH.AimbotEnabled = Value
     if Value then shared.PH.AINotify("تفعيل: نظام الآيم بوت الصمغي الثابت نشط الحين.", false) end
@@ -583,7 +588,7 @@ createToggle(CombatPage, "الآيم خلف الجدران", function(Value)
     shared.PH.AimBehindWalls = Value
 end)
 
-createTextbox(CombatPage, "مسافة رؤية الآيم (FOV)", "150", function(Value)
+createTextbox(CombatPage, "مساحة رؤية الآيم (FOV)", "150", function(Value)
     shared.PH.AimbotFOV = tonumber(Value) or 150
 end)
 
@@ -647,7 +652,7 @@ RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Va
     pcall(function()
         if shared.PH.AimbotEnabled then
             if shared.PH.CurrentTarget and IsValidTarget(shared.PH.CurrentTarget) then
-                -- القفل صمغي وثابت يمنع الاهتزاز العشوائي
+                -- قفل صمغي مستمر
             else
                 shared.PH.CurrentTarget = GetClosestTarget()
             end
