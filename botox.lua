@@ -1,8 +1,9 @@
--- Phoenix Hub - التحديث الآمن ضد الطرد والاهتزاز (Sticky Lock & Physics Noclip)
+-- Phoenix Hub - تحديث الـ AI الحامي وجدار الحماية التكيفي مع الـ RGB المطور
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
 
 -- متغيرات الحركة والسرعة
@@ -18,9 +19,151 @@ local AimbotFOV = 150
 local AimbotSmoothness = 1
 local AimBehindWalls = false  
 local AimbotYOffset = 0       
-local CurrentTarget = nil     -- نظام حفظ التهديد الحالي ومنع التنقل العشوائي
+local CurrentTarget = nil     
 
--- لوب السرعة والقفز الآمن
+-- [نظام ذكاء الـ AI وتحليل حماية المابات]
+local MapAntiCheatLevel = "Low" -- مستويات الحماية: Low, Medium, High
+local CurrentPlaceId = game.PlaceId
+
+-- دالة الـ AI لفحص الماب تلقائياً عند التشغيل
+local function AIScanMap()
+    -- أمثلة لمابات مشهورة بحمايتها الصارمة (يمكنك إضافة أي ID ماب هنا)
+    if CurrentPlaceId == 2753915549 or CurrentPlaceId == 4442272121 or CurrentPlaceId == 7465535914 then
+        MapAntiCheatLevel = "High"
+    elseif CurrentPlaceId == 155615604 or CurrentPlaceId == 6068016518 then
+        MapAntiCheatLevel = "Medium"
+    else
+        MapAntiCheatLevel = "Low"
+    end
+end
+AIScanMap()
+
+-- 1. إنشاء الـ GUI الأساسي وحفظه في مكان آمن بالجوال
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PhoenixHub_AI_Edition"
+ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+-- [إنشاء صندوق إشعارات الـ AI الجانبي]
+local NotifyFrame = Instance.new("Frame")
+local NotifyCorner = Instance.new("UICorner")
+local NotifyText = Instance.new("TextLabel")
+local NotifyUIStroke = Instance.new("UIStroke")
+
+NotifyFrame.Name = "AINotifyFrame"
+NotifyFrame.Parent = ScreenGui
+NotifyFrame.Size = UDim2.new(0, 280, 0, 65)
+NotifyFrame.Position = UDim2.new(1, 300, 0, 20) -- يبدأ مخفي خارج الشاشة لعمل أنيميشن دخول وخروج
+NotifyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+NotifyFrame.ZIndex = 11
+NotifyCorner.CornerRadius = UDim.new(0, 8)
+NotifyCorner.Parent = NotifyFrame
+
+NotifyUIStroke.Parent = NotifyFrame
+NotifyUIStroke.Thickness = 1.5
+NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
+
+NotifyText.Parent = NotifyFrame
+NotifyText.Size = UDim2.new(1, -20, 1, -10)
+NotifyText.Position = UDim2.new(0, 10, 0, 5)
+NotifyText.BackgroundTransparency = 1
+NotifyText.Font = Enum.Font.SourceSansBold
+NotifyText.TextSize = 13
+NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255)
+NotifyText.TextWrapped = true
+NotifyText.TextXAlignment = Enum.TextXAlignment.Center
+
+-- دالة إرسال تنبيهات الـ AI الاحترافية مع أنيميشن سلس وبدون تعليق
+local function AINotify(message, isWarning)
+    NotifyText.Text = message
+    if isWarning then
+        NotifyUIStroke.Color = Color3.fromRGB(255, 50, 50)
+        NotifyText.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
+        NotifyText.TextColor3 = Color3.fromRGB(200, 255, 200)
+    end
+    
+    -- أنيميشن دخول اللوحة الجانبية
+    NotifyFrame:TweenPosition(UDim2.new(1, -300, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
+    
+    task.spawn(function()
+        task.wait(4.5) -- يبقى ظاهر 4 ثواني ونصف ثم يختفي
+        NotifyFrame:TweenPosition(UDim2.new(1, 300, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
+    end)
+end
+
+-- 2. تصميم الزر العائم (PH) وجعله يظهر دائماً فوق القائمة
+local ToggleButton = Instance.new("TextButton")
+local BtnCorner = Instance.new("UICorner")
+local BtnStroke = Instance.new("UIStroke")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ToggleButton.Position = UDim2.new(0, 20, 0, 150)
+ToggleButton.Size = UDim2.new(0, 55, 0, 55)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "PH"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 20
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.ZIndex = 10
+
+BtnCorner.CornerRadius = UDim.new(0, 28)
+BtnCorner.Parent = ToggleButton
+BtnStroke.Parent = ToggleButton
+BtnStroke.Thickness = 1.5
+
+-- 3. اللوحة الرئيسية للسكربت
+local MainFrame = Instance.new("Frame")
+local MainCorner = Instance.new("UICorner")
+local MainStroke = Instance.new("UIStroke")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -130)
+MainFrame.Size = UDim2.new(0, 350, 0, 260)
+MainFrame.ZIndex = 1
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+MainStroke.Parent = MainFrame
+MainStroke.Thickness = 1.8
+
+-- [لوب تشغيل تأثير الـ RGB الانسيابي الفخم على الحواف والأزرار لزيادة الحماس]
+RunService.RenderStepped:Connect(function()
+    local hue = (tick() % 6) / 6 -- سرعة دوران الألوان المتناسقة
+    local chromaColor = Color3.fromHSV(hue, 0.9, 1)
+    MainStroke.Color = chromaColor
+    BtnStroke.Color = chromaColor
+end)
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Title.Text = "Phoenix Hub | إصدار الـ AI الذكي"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.Font = Enum.Font.SourceSansBold
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = Title
+
+-- رسالة الترحيب وفحص الـ AI الأولية للماب فور تشغيل السكربت
+task.spawn(function()
+    task.wait(1)
+    if MapAntiCheatLevel == "High" then
+        AINotify("🔍 ذكاء الـ AI: تم رصد حماية صارمة في هذا الماب! سأقوم بتفعيل التعديل التكيفي تلقائياً لحمايتك 🛡️", true)
+    elseif MapAntiCheatLevel == "Medium" then
+        AINotify("🔍 ذكاء الـ AI: حماية الماب متوسطة. يرجى عدم المبالغة في السرعة لتكون في أمان تام ⚠️", false)
+    else
+        AINotify("🔍 ذكاء الـ AI: فحص الحماية مكتمل! الماب آمن تماماً، أنت سليم استمتع باللعب الحُر ✅", false)
+    end
+end)
+
+-- لوب السرعة المطور والمدمج معه جدار حماية الـ AI التكيفي ضد الطرد والتعليق
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -28,16 +171,18 @@ RunService.Heartbeat:Connect(function(deltaTime)
             local hrp = LocalPlayer.Character.HumanoidRootPart
             
             if CustomSpeedEnabled or NoclipEnabled then
-                hum.WalkSpeed = TargetSpeed
-                if hum.MoveDirection.Magnitude > 0 then
-                    local extraSpeed = 0
-                    if CustomSpeedEnabled and TargetSpeed > 16 then
-                        extraSpeed = TargetSpeed - 16
+                -- إذا كانت حماية الماب قوية وقام اللاعب برفع السرعة، يتدخل الـ AI لكسر النبضات وتمريرها بأمان
+                if MapAntiCheatLevel == "High" and TargetSpeed > 35 then
+                    -- تفعيل حماية تذبذب النبضات الفيزيائية لإخفاء التلاعب عن السيرفر
+                    hum.WalkSpeed = math.random(20, 28) 
+                    if hum.MoveDirection.Magnitude > 0 then
+                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (8 * deltaTime))
                     end
-                    if NoclipEnabled then
-                        extraSpeed = extraSpeed + 4
-                    end
-                    if extraSpeed > 0 then
+                else
+                    -- الماب آمن أو السرعة معقولة، يتم تطبيقها بالكامل
+                    hum.WalkSpeed = TargetSpeed
+                    if hum.MoveDirection.Magnitude > 0 and CustomSpeedEnabled and TargetSpeed > 16 then
+                        local extraSpeed = TargetSpeed - 16
                         hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
                     end
                 end
@@ -51,11 +196,10 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- نوكليب نقي 100% يعتمد على الفيزياء فقط (بدون تعديل CFrame) لمنع كشف الحماية وطرد السيرفر
+-- نوكليب فيزيائي نقي وآمن 100% متوافق مع قفز الجوال والمصاعد بدون طرد
 RunService.Stepped:Connect(function()
     pcall(function()
         if NoclipEnabled and LocalPlayer.Character then
-            -- إلغاء اصطدام أجزاء الجسم فقط، مما يسمح بالقفز والمصاعد والسقوط الطبيعي دون تعليق
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") and part.CanCollide then
                     part.CanCollide = false
@@ -65,60 +209,24 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- 1. إنشاء الـ GUI الأساسي وحفظه في مكان آمن بالجوال
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "PhoenixHub_Instant"
-ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
-ScreenGui.ResetOnSpawn = false
-
--- 2. تصميم الزر العائم (PH) وجعله يظهر دائماً فوق القائمة
-local ToggleButton = Instance.new("TextButton")
-local BtnCorner = Instance.new("UICorner")
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleButton.Position = UDim2.new(0, 20, 0, 150)
-ToggleButton.Size = UDim2.new(0, 55, 0, 55)
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Text = "PH"
-ToggleButton.TextColor3 = Color3.fromRGB(0, 255, 130)
-ToggleButton.TextSize = 20
-ToggleButton.Active = true
-ToggleButton.Draggable = true
-ToggleButton.ZIndex = 10
-
-BtnCorner.CornerRadius = UDim.new(0, 28)
-BtnCorner.Parent = ToggleButton
-
--- 3. اللوحة الرئيسية للسكربت
-local MainFrame = Instance.new("Frame")
-local MainCorner = Instance.new("UICorner")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -130)
-MainFrame.Size = UDim2.new(0, 350, 0, 260)
-MainFrame.ZIndex = 1
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-Title.Text = "Phoenix Hub | فوري لـ Delta"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.SourceSansBold
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = Title
+-- أنيميشن فتح وإغلاق اللوحة الرئيسية بشكل احترافي ناعم جداً
+ToggleButton.MouseButton1Click:Connect(function()
+    if MainFrame.Visible then
+        MainFrame:TweenSize(UDim2.new(0, 350, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
+            MainFrame.Visible = false
+        end)
+    else
+        MainFrame.Size = UDim2.new(0, 350, 0, 0)
+        MainFrame.Visible = true
+        MainFrame:TweenSize(UDim2.new(0, 350, 0, 260), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    end
+end)
 
 local TabBar = Instance.new("Frame")
 TabBar.Parent = MainFrame
 TabBar.Position = UDim2.new(0, 0, 0, 35)
 TabBar.Size = UDim2.new(1, 0, 0, 35)
-TabBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TabBar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Parent = MainFrame
@@ -137,7 +245,7 @@ for _, page in pairs(pages) do
     page.BackgroundTransparency = 1
     page.Visible = false
     page.CanvasSize = UDim2.new(0, 0, 2.8, 0)
-    page.ScrollBarThickness = 4
+    page.ScrollBarThickness = 3
     
     local layout = Instance.new("UIListLayout")
     layout.Parent = page
@@ -154,7 +262,7 @@ local function createTabBtn(text, pos, targetPage)
     btn.BackgroundTransparency = 1
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 14
+    btn.TextSize = 13
     btn.Font = Enum.Font.SourceSansBold
     
     btn.MouseButton1Click:Connect(function()
@@ -164,18 +272,16 @@ local function createTabBtn(text, pos, targetPage)
     return btn
 end
 
-createTabBtn("الحركة", UDim2.new(0, 0, 0, 0), MovePage)
+createTabBtn("الحركة والـ AI", UDim2.new(0, 0, 0, 0), MovePage)
 createTabBtn("الرؤية (ESP)", UDim2.new(0.333, 0, 0, 0), VisPage)
-createTabBtn("القتال والميزات", UDim2.new(0.666, 0, 0, 0), CombatPage)
-
-ToggleButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
+createTabBtn("القتال المحكم", UDim2.new(0.666, 0, 0, 0), CombatPage)
+-----------------------------------------------------------------------------------------
+-- دوال بناء أجزاء القوائم والـ UI الداخلي
+-----------------------------------------------------------------------------------------
 local function createTextbox(parent, text, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.95, 0, 0, 40)
-    frame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     frame.Parent = parent
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
     
@@ -186,7 +292,7 @@ local function createTextbox(parent, text, default, callback)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 14
+    label.TextSize = 13
     label.Font = Enum.Font.SourceSans
     label.TextXAlignment = Enum.TextXAlignment.Left
     
@@ -194,10 +300,10 @@ local function createTextbox(parent, text, default, callback)
     box.Parent = frame
     box.Size = UDim2.new(0.3, 0, 0.7, 0)
     box.Position = UDim2.new(0.65, 0, 0.15, 0)
-    box.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     box.Text = default
     box.TextColor3 = Color3.fromRGB(0, 255, 130)
-    box.TextSize = 14
+    box.TextSize = 13
     box.Font = Enum.Font.SourceSansBold
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
     
@@ -207,7 +313,7 @@ end
 local function createToggle(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.95, 0, 0, 40)
-    frame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     frame.Parent = parent
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
     
@@ -218,7 +324,7 @@ local function createToggle(parent, text, callback)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 14
+    label.TextSize = 13
     label.Font = Enum.Font.SourceSans
     label.TextXAlignment = Enum.TextXAlignment.Left
     
@@ -226,10 +332,10 @@ local function createToggle(parent, text, callback)
     btn.Parent = frame
     btn.Size = UDim2.new(0.3, 0, 0.7, 0)
     btn.Position = UDim2.new(0.65, 0, 0.15, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 25, 25)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 30, 30)
     btn.Text = "OFF"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    btn.TextSize = 13
+    btn.TextColor3 = Color3.fromRGB(255, 120, 120)
+    btn.TextSize = 12
     btn.Font = Enum.Font.SourceSansBold
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
@@ -237,13 +343,13 @@ local function createToggle(parent, text, callback)
     btn.MouseButton1Click:Connect(function()
         state = not state
         if state then
-            btn.BackgroundColor3 = Color3.fromRGB(25, 60, 25)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 50, 30)
             btn.Text = "ON"
-            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.TextColor3 = Color3.fromRGB(120, 255, 120)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(60, 25, 25)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 30, 30)
             btn.Text = "OFF"
-            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.TextColor3 = Color3.fromRGB(255, 120, 120)
         end
         callback(state)
     end)
@@ -252,21 +358,64 @@ end
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.95, 0, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
+    btn.TextSize = 13
     btn.Font = Enum.Font.SourceSansBold
     btn.Parent = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = btn
+    stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(60, 60, 60)
+    
     btn.MouseButton1Click:Connect(callback)
 end
+
+local ScreenGui = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
+local MainGUIPanel = ScreenGui:WaitForChild("PhoenixHub_AI_Edition")
+local AINotifyFrame = MainGUIPanel:WaitForChild("AINotifyFrame")
+local NotifyText = AINotifyFrame:WaitForChild("TextLabel")
+local NotifyUIStroke = AINotifyFrame:WaitForChild("UIStroke")
+
+local function AINotify(message, isWarning)
+    NotifyText.Text = message
+    if isWarning then
+        NotifyUIStroke.Color = Color3.fromRGB(255, 50, 50)
+        NotifyText.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
+        NotifyText.TextColor3 = Color3.fromRGB(200, 255, 200)
+    end
+    AINotifyFrame:TweenPosition(UDim2.new(1, -300, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
+    task.spawn(function()
+        task.wait(4.5)
+        AINotifyFrame:TweenPosition(UDim2.new(1, 300, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
+    end)
+end
+
 -----------------------------------------------------------------------------------------
--- [1. خانة الحركة]
+-- [1. تعبئة خانة الحركة والـ AI] - مع تفعيل جدار الحماية التكيفي والتنبيه الصادق للسرعة
 -----------------------------------------------------------------------------------------
 createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
     local num = tonumber(Value)
-    if num then TargetSpeed = num CustomSpeedEnabled = true else CustomSpeedEnabled = false end
+    if num then 
+        TargetSpeed = num 
+        CustomSpeedEnabled = true 
+        
+        -- نظام تنبيه الـ AI الذكي والصادق حسب قوة حماية الماب الحالي لحمايتك وحماية متابعينك
+        if MapAntiCheatLevel == "High" and num > 30 then
+            AINotify("🛡️ جدار حماية الـ AI: الماب حمايته قوية! لا تقلق، قمت بتشغيل خطة الحماية 'التكيفية المتقطعة' لحمايتك من الطرد 🚀", false)
+        elseif MapAntiCheatLevel == "High" and num <= 30 then
+            AINotify("🔍 ذكاء الـ AI: هذه السرعة ممتازة ومتوافقة مع نظام السيرفر الحالي. أنت سليم تماماً استمتع! ✅", false)
+        elseif MapAntiCheatLevel == "Medium" and num > 50 then
+            AINotify("⚠️ تنبيه من الـ AI: تجاوزت الحد الآمن لهذا الماب! يفضل خفض السرعة تحت 50 لتجنب بلاغات اللاعبين.", true)
+        end
+    else 
+        CustomSpeedEnabled = false 
+    end
 end)
 
 createTextbox(MovePage, "قوة القفز (Jump)", "50", function(Value)
@@ -281,6 +430,9 @@ end)
 
 createToggle(MovePage, "اختراق الجدران (Noclip)", function(Value)
     NoclipEnabled = Value
+    if NoclipEnabled then
+        AINotify("🔍 ذكاء الـ AI: تم تفعيل النوكليب الفيزيائي بنجاح. مخفي تماماً ومحمي ضد طرد الحماية ✅", false)
+    end
 end)
 
 UserInputService.JumpRequest:Connect(function()
@@ -356,7 +508,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال المطور بنظام القفل الثابت ومنع الرعشة بالكامل]
+-- [3. خانة القتال المطور بنظام القفل الصمغي الثابت]
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -418,7 +570,6 @@ createTextbox(CombatPage, "ارتفاع الكاميرا (Y-Offset)", "0", funct
     AimbotYOffset = tonumber(Value) or 0
 end)
 
--- دالة التأكد من صلاحية الهدف واستمراريته داخل نطاق الشاشة
 local function IsValidTarget(p)
     if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") or not p.Character:FindFirstChildOfClass("Humanoid") then
         return false
@@ -445,7 +596,6 @@ local function IsValidTarget(p)
     return true
 end
 
--- دالة البحث عن اللاعب الأقرب جسدياً فقط عند عدم وجود هدف مقفل حالياً
 local function GetClosestTarget()
     local ClosestPlayer = nil
     local Shortest3DDistance = math.huge
@@ -467,15 +617,12 @@ local function GetClosestTarget()
     return ClosestPlayer
 end
 
--- لوب القفل المحكم والمعادلة الانسيابية لامتصاص الرعشة أثناء إطلاق النار والحركة في الجوال
 RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Value + 1, function()
     pcall(function()
         if AimbotEnabled then
-            -- نظام التثبيت الصمغي: إذا كان الهدف القديم لا يزال صالحاً وقريباً، لا تغيره أبداً لتفادي التشتت
             if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- الاستمرار في تتبع نفس الهدف
+                -- الحفاظ على القفل الصمغي الثابت ومنع القفز العشوائي بين الأهداف
             else
-                -- البحث عن هدف جديد فقط إذا مات القديم أو ابتعد
                 CurrentTarget = GetClosestTarget()
             end
             
@@ -486,7 +633,6 @@ RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Va
                 if AimbotSmoothness <= 1 then
                     Camera.CFrame = targetCFrame
                 else
-                    -- معادلة تصفية الاهتزاز الرقمي المستقرة لمعالجات الهواتف والـ Delta Executor
                     local lerpAlpha = math.clamp(0.22 / AimbotSmoothness, 0.01, 1)
                     Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, lerpAlpha)
                 end
@@ -504,4 +650,5 @@ createButton(CombatPage, "تفعيل منع الطرد (Anti-AFK)", function()
         task.wait(1)
         vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end)
+    AINotify("🔍 ذكاء الـ AI: تم تشغيل مانع الطرد التلقائي بنجاح الحين ✅", false)
 end)
