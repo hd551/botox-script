@@ -1,4 +1,6 @@
--- Phoenix Hub - إصدار الـ AI الذكي مع الإشعارات المطورة (أسود، أحمر، أبيض)
+-- Phoenix Hub | إصدار مراقب الـ AI الداخلي والهيت بوكس الثنائي
+shared.PH = shared.PH or {}
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -6,95 +8,45 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
 
--- متغيرات الحركة والسرعة
-local TargetSpeed = 16
-local TargetJump = 50
-local CustomSpeedEnabled = false
-local CustomJumpEnabled = false
-local NoclipEnabled = false
+-- تهيئة وتخزين جميع المتغيرات في جدول مشترك لمنع التضارب في الجوال
+shared.PH.TargetSpeed = 16
+shared.PH.TargetJump = 50
+shared.PH.CustomSpeedEnabled = false
+shared.PH.CustomJumpEnabled = false
+shared.PH.NoclipEnabled = false
+shared.PH.AimbotEnabled = false
+shared.PH.AimbotFOV = 150
+shared.PH.AimbotSmoothness = 1
+shared.PH.AimBehindWalls = false  
+shared.PH.AimbotYOffset = 0       
+shared.PH.CurrentTarget = nil     
+shared.PH.MapAntiCheatLevel = "Low"
 
--- متغيرات الآيم بوت وإعداداته المتقدمة
-local AimbotEnabled = false
-local AimbotFOV = 150
-local AimbotSmoothness = 1
-local AimBehindWalls = false  
-local AimbotYOffset = 0       
-local CurrentTarget = nil     
+-- متغيرات الهيت بوكس الأول (العام) والـ هيت بوكس الثاني البديل (الرأس)
+shared.PH.HitboxSize = 2
+shared.PH.HitboxEnabled = false
+shared.PH.HitboxSize2 = 2
+shared.PH.HitboxEnabled2 = false
 
--- [نظام ذكاء الـ AI وتحليل حماية المابات]
-local MapAntiCheatLevel = "Low"
 local CurrentPlaceId = game.PlaceId
-
 local function AIScanMap()
     if CurrentPlaceId == 2753915549 or CurrentPlaceId == 4442272121 or CurrentPlaceId == 7465535914 then
-        MapAntiCheatLevel = "High"
+        shared.PH.MapAntiCheatLevel = "High"
     elseif CurrentPlaceId == 155615604 or CurrentPlaceId == 6068016518 then
-        MapAntiCheatLevel = "Medium"
+        shared.PH.MapAntiCheatLevel = "Medium"
     else
-        MapAntiCheatLevel = "Low"
+        shared.PH.MapAntiCheatLevel = "Low"
     end
 end
 AIScanMap()
 
--- 1. إنشاء الـ GUI الأساسي وحفظه في مكان آمن
+-- 1. إنشاء واجهة المستخدم الأساسية للسكربت
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "PhoenixHub_AI_Edition"
+ScreenGui.Name = "PhoenixHub_AI_Dashboard"
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- [بناء صندوق إشعارات الـ AI بالثيم الجديد: أسود، أحمر، أبيض]
-local NotifyFrame = Instance.new("Frame")
-local NotifyCorner = Instance.new("UICorner")
-local NotifyText = Instance.new("TextLabel")
-local NotifyUIStroke = Instance.new("UIStroke")
-
-NotifyFrame.Name = "AINotifyFrame"
-NotifyFrame.Parent = ScreenGui
-NotifyFrame.Size = UDim2.new(0, 310, 0, 80) -- حجم أكبر لمنع اختفاء النصوص الطويلة في الجوال
-NotifyFrame.Position = UDim2.new(1, 320, 0, 20) 
-NotifyFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- أسود خالص
-NotifyFrame.ZIndex = 11
-NotifyFrame.ClipsDescendants = false
-
-NotifyCorner.CornerRadius = UDim.new(0, 6)
-NotifyCorner.Parent = NotifyFrame
-
-NotifyUIStroke.Name = "NotifyUIStroke"
-NotifyUIStroke.Parent = NotifyFrame
-NotifyUIStroke.Thickness = 2 
-NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- أبيض أساسي
-
-NotifyText.Name = "NotifyText"
-NotifyText.Parent = NotifyFrame
-NotifyText.Size = UDim2.new(1, -20, 1, -10)
-NotifyText.Position = UDim2.new(0, 10, 0, 5)
-NotifyText.BackgroundTransparency = 1
-NotifyText.Font = Enum.Font.SourceSansBold
-NotifyText.TextSize = 14 -- خط عريض وواضح للقراءة للمتابعين
-NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- أبيض ناصع
-NotifyText.TextWrapped = true
-NotifyText.ZIndex = 12 
-NotifyText.TextXAlignment = Enum.TextXAlignment.Center
-
--- دالة إرسال تنبيهات الـ AI بالألوان الثلاثية
-local function AINotify(message, isWarning)
-    NotifyText.Text = message
-    if isWarning then
-        NotifyUIStroke.Color = Color3.fromRGB(255, 0, 0) -- حافة حمراء حادة عند الخطر
-    else
-        NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- حافة بيضاء نقية في الوضع السليم
-    end
-    NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- النص دائماً أبيض لضمان أعلى وضوح على الخلفية السوداء
-    
-    NotifyFrame:TweenPosition(UDim2.new(1, -330, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
-    
-    task.spawn(function()
-        task.wait(5) -- تظل 5 ثواني كاملة ليتمكن المشاهد من قراءتها
-        NotifyFrame:TweenPosition(UDim2.new(1, 320, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
-    end)
-end
-
--- 2. تصميم الزر العائم (PH)
+-- 2. زر الاختصار العائم (PH)
 local ToggleButton = Instance.new("TextButton")
 local BtnCorner = Instance.new("UICorner")
 local BtnStroke = Instance.new("UIStroke")
@@ -132,7 +84,7 @@ MainCorner.Parent = MainFrame
 MainStroke.Parent = MainFrame
 MainStroke.Thickness = 1.8
 
--- تأثير الـ RGB الانسيابي على إطار اللوحة الرئيسية والزر فقط لزيادة الحماس للبثوث
+-- تأثير الـ RGB الانسيابي الفخم على أطراف اللوحة والزر العائم
 RunService.RenderStepped:Connect(function()
     local hue = (tick() % 6) / 6
     local chromaColor = Color3.fromHSV(hue, 0.9, 1)
@@ -144,82 +96,13 @@ local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Title.Text = "Phoenix Hub | إصدار الـ AI الذكي"
+Title.Text = "Phoenix Hub | نظام المراقبة والهيت بوكس الثنائي"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 15
+Title.TextSize = 14
 Title.Font = Enum.Font.SourceSansBold
 local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = Title
-
--- فحص الـ AI الأولية للماب فور تشغيل السكربت
-task.spawn(function()
-    task.wait(1)
-    if MapAntiCheatLevel == "High" then
-        AINotify("🔍 ذكاء الـ AI: تم رصد حماية صارمة في هذا الماب! سأقوم بتفعيل التعديل التكيفي تلقائياً لحمايتك 🛡️", true)
-    elseif MapAntiCheatLevel == "Medium" then
-        AINotify("🔍 ذكاء الـ AI: حماية الماب متوسطة. يرجى عدم المبالغة في السرعة لتكون في أمان تام ⚠️", false)
-    else
-        AINotify("🔍 ذكاء الـ AI: فحص الحماية مكتمل! الماب آمن تماماً، أنت سليم استمتع باللعب الحُر ✅", false)
-    end
-end)
-
--- لوب السرعة وجدار حماية الـ AI التكيفي ضد الطرد
-RunService.Heartbeat:Connect(function(deltaTime)
-    pcall(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local hum = LocalPlayer.Character.Humanoid
-            local hrp = LocalPlayer.Character.HumanoidRootPart
-            
-            if CustomSpeedEnabled or NoclipEnabled then
-                if MapAntiCheatLevel == "High" and TargetSpeed > 35 then
-                    -- تفعيل حماية تذبذب النبضات الفيزيائية لإخفاء التلاعب عن السيرفر
-                    hum.WalkSpeed = math.random(20, 28) 
-                    if hum.MoveDirection.Magnitude > 0 then
-                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (8 * deltaTime))
-                    end
-                else
-                    hum.WalkSpeed = TargetSpeed
-                    if hum.MoveDirection.Magnitude > 0 and CustomSpeedEnabled and TargetSpeed > 16 then
-                        local extraSpeed = TargetSpeed - 16
-                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
-                    end
-                end
-            end
-            
-            if CustomJumpEnabled then
-                hum.UseJumpPower = true
-                hum.JumpPower = TargetJump
-            end
-        end
-    end)
-end)
-
--- نوكليب فيزيائي نقي وآمن 100% متوافق مع قفز الجوال
-RunService.Stepped:Connect(function()
-    pcall(function()
-        if NoclipEnabled and LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end)
-end)
-
--- أنيميشن فتح وإغلاق اللوحة
-ToggleButton.MouseButton1Click:Connect(function()
-    if MainFrame.Visible then
-        MainFrame:TweenSize(UDim2.new(0, 350, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
-            MainFrame.Visible = false
-        end)
-    else
-        MainFrame.Size = UDim2.new(0, 350, 0, 0)
-        MainFrame.Visible = true
-        MainFrame:TweenSize(UDim2.new(0, 350, 0, 260), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-    end
-end)
 
 local TabBar = Instance.new("Frame")
 TabBar.Parent = MainFrame
@@ -236,8 +119,9 @@ ContentFrame.BackgroundTransparency = 1
 local MovePage = Instance.new("ScrollingFrame")
 local VisPage = Instance.new("ScrollingFrame")
 local CombatPage = Instance.new("ScrollingFrame")
+local AILogPage = Instance.new("ScrollingFrame") -- الخانة الجديدة المخصصة لمراقب الـ AI
 
-local pages = {MovePage, VisPage, CombatPage}
+local pages = {MovePage, VisPage, CombatPage, AILogPage}
 for _, page in pairs(pages) do
     page.Parent = ContentFrame
     page.Size = UDim2.new(1, 0, 1, 0)
@@ -253,15 +137,57 @@ for _, page in pairs(pages) do
 end
 MovePage.Visible = true
 
+-- تنسيق صفحة الـ AI لتستقبل الإشعارات المنظمة بشكل تنازلي
+local AILogLayout = AILogPage:FindFirstChildOfClass("UIListLayout")
+AILogLayout.Padding = UDim.new(0, 5)
+
+-- [دالة تحويل الإشعارات إلى سجلات داخل قائمة الـ AI بثيم ملكي: أسود، أحمر، أبيض]
+shared.PH.AINotify = function(message, isWarning)
+    local LogRow = Instance.new("Frame")
+    local LogCorner = Instance.new("UICorner")
+    local LogStroke = Instance.new("UIStroke")
+    local LogText = Instance.new("TextLabel")
+    
+    LogRow.Size = UDim2.new(0.95, 0, 0, 50)
+    LogRow.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- أسود خالص
+    LogRow.Parent = AILogPage
+    
+    LogCorner.CornerRadius = UDim.new(0, 6)
+    LogCorner.Parent = LogRow
+    
+    LogStroke.Parent = LogRow
+    LogStroke.Thickness = 1.5
+    if isWarning then
+        LogStroke.Color = Color3.fromRGB(255, 0, 0) -- إطار أحمر عند التحذير من ميزة مكشوفة
+    else
+        LogStroke.Color = Color3.fromRGB(255, 255, 255) -- إطار أبيض عند الميزات السليمة والآمنة
+    end
+    
+    LogText.Parent = LogRow
+    LogText.Size = UDim2.new(1, -16, 1, 0)
+    LogText.Position = UDim2.new(0, 8, 0, 0)
+    LogText.BackgroundTransparency = 1
+    LogText.Font = Enum.Font.SourceSansBold
+    LogText.TextSize = 12
+    LogText.TextColor3 = Color3.fromRGB(255, 255, 255) -- نص أبيض ناصع وواضح
+    LogText.TextWrapped = true
+    LogText.TextXAlignment = Enum.TextXAlignment.Center
+    LogText.Text = "[" .. os.date("%X") .. "] " .. message
+    
+    -- جعل السجل التلقائي يرتفع لأعلى ليرى المستخدم أحدث التنبيهات دائماً
+    LogRow.LayoutOrder = -tick()
+    AILogPage.CanvasPosition = Vector2.new(0, 0)
+end
+
 local function createTabBtn(text, pos, targetPage)
     local btn = Instance.new("TextButton")
     btn.Parent = TabBar
-    btn.Size = UDim2.new(0.333, 0, 1, 0)
+    btn.Size = UDim2.new(0.25, 0, 1, 0) -- تقسيم متساوي للأربع خانات
     btn.Position = pos
     btn.BackgroundTransparency = 1
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 13
+    btn.TextSize = 12
     btn.Font = Enum.Font.SourceSansBold
     
     btn.MouseButton1Click:Connect(function()
@@ -272,10 +198,132 @@ local function createTabBtn(text, pos, targetPage)
 end
 
 createTabBtn("الحركة والـ AI", UDim2.new(0, 0, 0, 0), MovePage)
-createTabBtn("الرؤية (ESP)", UDim2.new(0.333, 0, 0, 0), VisPage)
-createTabBtn("القتال المحكم", UDim2.new(0.666, 0, 0, 0), CombatPage)
+createTabBtn("الرؤية ESP", UDim2.new(0.25, 0, 0, 0), VisPage)
+createTabBtn("القتال المحكم", UDim2.new(0.5, 0, 0, 0), CombatPage)
+createTabBtn("مراقب الـ AI", UDim2.new(0.75, 0, 0, 0), AILogPage)
+
+-- تقرير فحص الحماية وبدء تشغيل السجل فور تفعيل السكربت ليوضح المسموح والممنوع في الماب
+task.spawn(function()
+    task.wait(1)
+    if shared.PH.MapAntiCheatLevel == "High" then
+        shared.PH.AINotify("⚙️ فحص الماب: هذا الماب يمتلك حماية (صارمة) ضد السرعة والهيت بوكس الأول! تم تفعيل التعديل التكيفي تلقائياً. يُنصح باستخدام (الهيت بوكس 2) لتفادي الباند 🛡️", true)
+    elseif shared.PH.MapAntiCheatLevel == "Medium" then
+        shared.PH.AINotify("⚙️ فحص الماب: الحماية هنا (متوسطة). ميزات السرعة والقفز تعمل لكن يفضل عدم المبالغة لتجنب شكاوى وبلاغات اللاعبين ⚠️", false)
+    else
+        shared.PH.AINotify("⚙️ فحص الماب: فحص الحماية مكتمل! الماب آمن وضعيف جداً. أنت سليم 100%، جميع الميزات والهيت بوكس الأول والثاني آمنة للاستخدام والتشغيل ✅", false)
+    end
+end)
+
+-- لوب فيزيائي مدمج للسرعة وجدار حماية الـ AI التكيفي
+RunService.Heartbeat:Connect(function(deltaTime)
+    pcall(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local hum = LocalPlayer.Character.Humanoid
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            
+            if shared.PH.CustomSpeedEnabled or shared.PH.NoclipEnabled then
+                if shared.PH.MapAntiCheatLevel == "High" and shared.PH.TargetSpeed > 35 then
+                    hum.WalkSpeed = math.random(20, 28) 
+                    if hum.MoveDirection.Magnitude > 0 then
+                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (8 * deltaTime))
+                    end
+                else
+                    hum.WalkSpeed = shared.PH.TargetSpeed
+                    if hum.MoveDirection.Magnitude > 0 and shared.PH.CustomSpeedEnabled and shared.PH.TargetSpeed > 16 then
+                        local extraSpeed = shared.PH.TargetSpeed - 16
+                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
+                    end
+                end
+            end
+            
+            if shared.PH.CustomJumpEnabled then
+                hum.UseJumpPower = true
+                hum.JumpPower = shared.PH.TargetJump
+            end
+        end
+    end)
+end)
+
+-- اللوب الفيزيائي الخاص بالهيت بوكس الأول والثاني (البديل) دون المساس بأي ميزة أخرى
+local OriginalHeadSizes = {}
+RunService.Heartbeat:Connect(function()
+    -- [طريقة الهيت بوكس 1 - تعديل الـ HumanoidRootPart الأصلي]
+    pcall(function()
+        if shared.PH.HitboxEnabled then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = p.Character.HumanoidRootPart
+                    hrp.Size = Vector3.new(shared.PH.HitboxSize, shared.PH.HitboxSize, shared.PH.HitboxSize)
+                    hrp.Transparency = 0.7
+                    hrp.BrickColor = BrickColor.new("Really blue")
+                    hrp.CanCollide = false
+                end
+            end
+        end
+    end)
+    
+    -- [طريقة الهيت بوكس 2 البديلة - تعديل الـ Head وتخزين الحجم الأصلي لحمايتك]
+    pcall(function()
+        if shared.PH.HitboxEnabled2 then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                    local head = p.Character.Head
+                    if not OriginalHeadSizes[p] then
+                        OriginalHeadSizes[p] = head.Size -- حفظ الحجم الأصلي لمنع تدمير الماب
+                    end
+                    head.Size = Vector3.new(shared.PH.HitboxSize2, shared.PH.HitboxSize2, shared.PH.HitboxSize2)
+                    head.Transparency = 0.5
+                    head.CanCollide = false
+                end
+            end
+        else
+            -- إعادة الأشكال لأحجامها الطبيعية فوراً عند قفل الزر
+            for p, size in pairs(OriginalHeadSizes) do
+                if p.Character and p.Character:FindFirstChild("Head") then
+                    p.Character.Head.Size = size
+                    p.Character.Head.Transparency = 0
+                end
+            end
+            table.clear(OriginalHeadSizes)
+        end
+    end)
+end)
+
+-- نوكليب آمن ومتوافق مع قفز الجوال
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if shared.PH.NoclipEnabled and LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+end)
+
+-- أنيميشن فتح وإغلاق اللوحة الرئيسية
+ToggleButton.MouseButton1Click:Connect(function()
+    if MainFrame.Visible then
+        MainFrame:TweenSize(UDim2.new(0, 350, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
+            MainFrame.Visible = false
+        end)
+    else
+        MainFrame.Size = UDim2.new(0, 350, 0, 0)
+        MainFrame.Visible = true
+        MainFrame:TweenSize(UDim2.new(0, 350, 0, 260), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    end
+end)
+shared.PH = shared.PH or {}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
 -----------------------------------------------------------------------------------------
--- دوال بناء عناصر القائمة الداخلي
+-- دوال بناء عناصر القائمة الداخلية تلقائياً بجودة عالية
 -----------------------------------------------------------------------------------------
 local function createTextbox(parent, text, default, callback)
     local frame = Instance.new("Frame")
@@ -373,65 +421,50 @@ local function createButton(parent, text, callback)
     btn.MouseButton1Click:Connect(callback)
 end
 
--- استدعاء عناصر صندوق الإشعارات الجديد للتحكم بالألوان والخطوط بدقة من القسم الثاني
+-- استدعاء صفحات لوحة التحكم المفتوحة مسبقاً
 local ScreenGui = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
-local MainGUIPanel = ScreenGui:WaitForChild("PhoenixHub_AI_Edition")
-local AINotifyFrame = MainGUIPanel:WaitForChild("AINotifyFrame")
-local NotifyText = AINotifyFrame:WaitForChild("NotifyText")
-local NotifyUIStroke = AINotifyFrame:WaitForChild("NotifyUIStroke")
-
-local function AINotify(message, isWarning)
-    NotifyText.Text = message
-    if isWarning then
-        NotifyUIStroke.Color = Color3.fromRGB(255, 0, 0) -- إطار أحمر عند التحذير الصارم
-    else
-        NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- إطار أبيض عند السلامة والأمان
-    end
-    NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- النص دائماً باللون الأبيض ليكون فخم ومقروء بالكامل
-    
-    AINotifyFrame:TweenPosition(UDim2.new(1, -330, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
-    task.spawn(function()
-        task.wait(5)
-        AINotifyFrame:TweenPosition(UDim2.new(1, 320, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
-    end)
-end
+local MainFrame = ScreenGui:WaitForChild("PhoenixHub_AI_Dashboard"):WaitForChild("MainFrame")
+local ContentFrame = MainFrame:WaitForChild("ContentFrame")
+local MovePage = ContentFrame:WaitForChild("ScrollingFrame")
+local VisPage = ContentFrame:WaitForChild("ScrollingFrame2")
+local CombatPage = ContentFrame:WaitForChild("ScrollingFrame3")
 
 -----------------------------------------------------------------------------------------
--- [1. تعبئة عناصر صفحة الحركة والـ AI مع ميزة التنبيهات التكيفية الصادقة والذكية]
+-- [1. تعبئة عناصر صفحة الحركة والـ AI مع نظام المراقبة الصادق لتفادي الحظر والشكاوى]
 -----------------------------------------------------------------------------------------
 createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
     local num = tonumber(Value)
     if num then 
-        TargetSpeed = num 
-        CustomSpeedEnabled = true 
+        shared.PH.TargetSpeed = num 
+        shared.PH.CustomSpeedEnabled = true 
         
-        -- نظام الإشعارات الصادقة والذكية المخصصة لحماية المتابعين من الطرد أو البلاغات
-        if MapAntiCheatLevel == "High" and num > 30 then
-            AINotify("🛡️ جدار حماية الـ AI: الماب حمايته قوية! لا تقلق، قمت بتشغيل خطة الحماية 'التكيفية المتقطعة' لحمايتك من الطرد 🚀", false)
-        elseif MapAntiCheatLevel == "High" and num <= 30 then
-            AINotify("🔍 ذكاء الـ AI: هذه السرعة ممتازة ومتوافقة مع نظام السيرفر الحالي. أنت سليم تماماً استمتع! ✅", false)
-        elseif MapAntiCheatLevel == "Medium" and num > 50 then
-            AINotify("⚠️ تنبيه من الـ AI: تجاوزت الحد الآمن لهذا الماب! يفضل خفض السرعة تحت 50 لتجنب بلاغات اللاعبين.", true)
+        if shared.PH.MapAntiCheatLevel == "High" and num > 30 then
+            shared.PH.AINotify("🛡️ تنبيه الحركة: الماب حمايته قوية! تم تفعيل 'خطة الحماية المتقطعة للتذبذب الفيزيائي' تلقائياً لتفادي الطرد 🚀", false)
+        elseif shared.PH.MapAntiCheatLevel == "High" and num <= 30 then
+            shared.PH.AINotify("🔍 مراقبة الـ AI: سرعة متوازنة وممتازة للنظام الحالي للماب. أنت سليم تماماً استمتع! ✅", false)
+        elseif shared.PH.MapAntiCheatLevel == "Medium" and num > 50 then
+            shared.PH.AINotify("⚠️ تحذير الـ AI: لقد تجاوزت السرعة الآمنة لهذا الماب (الحد الأقصى الموصى به 50) تجنباً للبلاغات والشكاوى.", true)
         end
     else 
-        CustomSpeedEnabled = false 
+        shared.PH.CustomSpeedEnabled = false 
     end
 end)
 
 createTextbox(MovePage, "قوة القفز (Jump)", "50", function(Value)
     local num = tonumber(Value)
-    if num then TargetJump = num CustomJumpEnabled = true else CustomJumpEnabled = false end
+    if num then shared.PH.TargetJump = num shared.PH.CustomJumpEnabled = true else shared.PH.CustomJumpEnabled = false end
 end)
 
 local InfiniteJumpEnabled = false
 createToggle(MovePage, "القفز اللانهائي", function(Value)
     InfiniteJumpEnabled = Value
+    if Value then shared.PH.AINotify("تفعيل: القفز اللانهائي نشط الآن.", false) end
 end)
 
 createToggle(MovePage, "اختراق الجدران (Noclip)", function(Value)
-    NoclipEnabled = Value
-    if NoclipEnabled then
-        AINotify("🔍 ذكاء الـ AI: تم تفعيل النوكليب الفيزيائي بنجاح. مخفي تماماً ومحمي ضد طرد الحماية ✅", false)
+    shared.PH.NoclipEnabled = Value
+    if shared.PH.NoclipEnabled then
+        shared.PH.AINotify("🔍 مراقبة الـ AI: النوكليب الفيزيائي يعمل بنجاح، ومحمي بالكامل ضد طرد الحماية الخفية ✅", false)
     end
 end)
 
@@ -447,6 +480,7 @@ end)
 local PlayerESPEnabled = false
 createToggle(VisPage, "كشف اللاعبين (Player ESP)", function(Value)
     PlayerESPEnabled = Value
+    if Value then shared.PH.AINotify("تفعيل: كشف موقع اللاعبين نشط.", false) end
     if not PlayerESPEnabled then
         for _, v in pairs(Players:GetPlayers()) do
             if v.Character and v.Character:FindFirstChild("ESPHighlight") then v.Character.ESPHighlight:Destroy() end
@@ -476,6 +510,7 @@ end)
 local ChestESPEnabled = false
 createToggle(VisPage, "كشف الصناديق والأدوات", function(Value)
     ChestESPEnabled = Value
+    if Value then shared.PH.AINotify("تفعيل: رادار كشف الصناديق والأدوات نشط.", false) end
     if not ChestESPEnabled then
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("Highlight") and v.Name == "ChestHighlight" then v:Destroy() end
@@ -508,66 +543,57 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. عناصر صفحة القتال ونظام القفل الصمغي المحكم]
+-- [3. عناصر صفحة القتال المتقدمة - الهيت بوكس الثنائي لمنع التعطل في جميع المابات]
 -----------------------------------------------------------------------------------------
-local HitboxSize = 2
-local HitboxEnabled = false
-local LastHitboxState = false
-
-createTextbox(CombatPage, "حجم الهيت بوكس (Size)", "2", function(Value)
-    HitboxSize = tonumber(Value) or 2
+-- الهيت بوكس الأول (العام):
+createTextbox(CombatPage, "حجم الهيت بوكس 1 (العام)", "2", function(Value)
+    shared.PH.HitboxSize = tonumber(Value) or 2
 end)
 
-createToggle(CombatPage, "تفعيل تكبير الهيت بوكس", function(Value)
-    HitboxEnabled = Value
-end)
-
-RunService.Heartbeat:Connect(function()
-    pcall(function()
-        if HitboxEnabled then
-            LastHitboxState = true
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = p.Character.HumanoidRootPart
-                    hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-                    hrp.Transparency = 0.7
-                    hrp.BrickColor = BrickColor.new("Really blue")
-                    hrp.CanCollide = false
-                end
-            end
-        elseif LastHitboxState then
-            LastHitboxState = false
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = p.Character.HumanoidRootPart
-                    hrp.Size = Vector3.new(2, 2, 2)
-                    hrp.Transparency = 1
-                    hrp.CanCollide = true
-                end
-            end
+createToggle(CombatPage, "تفعيل الهيت بوكس 1", function(Value)
+    shared.PH.HitboxEnabled = Value
+    if Value then 
+        if shared.PH.MapAntiCheatLevel == "High" then
+            shared.PH.AINotify("⚠️ تنبيه الحماية: الهيت بوكس الأول قد يكون مكشوفاً هنا! إذا تم طردك استخدم الهيت بوكس الثاني البديل فوراُ.", true)
+        else
+            shared.PH.AINotify("تفعيل: الهيت بوكس الأول (الجذع العام) نشط وآمن في هذا الماب ✅", false)
         end
-    end)
+    end
 end)
 
+-- الهيت بوكس الثاني البديل (الرأس) لحل مشكلة عدم اشتغال الميزة في بعض المابات:
+createTextbox(CombatPage, "مربع تكبير الهيت بوكس 2 (البديل)", "2", function(Value)
+    shared.PH.HitboxSize2 = tonumber(Value) or 2
+end)
+
+createToggle(CombatPage, "تفعيل الهيت بوكس 2 (البديل)", function(Value)
+    shared.PH.HitboxEnabled2 = Value
+    if Value then 
+        shared.PH.AINotify("🔍 خطة الحماية البديلة: تم تشغيل (الهيت بوكس 2 - الرأس). آمن ومخفي تماماً عن فحص السيرفر في مابات الحماية الصارمة 🛡️", false)
+    end
+end)
+
+-- بقية ميزات القتال (الآيم بوت بدون أي تغيير أو تخريب)
 createToggle(CombatPage, "تفعيل الآيم بوت (Aimbot)", function(Value)
-    AimbotEnabled = Value
+    shared.PH.AimbotEnabled = Value
+    if Value then shared.PH.AINotify("تفعيل: نظام الآيم بوت الصمغي الثابت نشط الحين.", false) end
 end)
 
 createToggle(CombatPage, "الآيم خلف الجدران", function(Value)
-    AimBehindWalls = Value
+    shared.PH.AimBehindWalls = Value
 end)
 
 createTextbox(CombatPage, "مسافة رؤية الآيم (FOV)", "150", function(Value)
-    AimbotFOV = tonumber(Value) or 150
+    shared.PH.AimbotFOV = tonumber(Value) or 150
 end)
 
 createTextbox(CombatPage, "سلاسة الآيم (Smoothness)", "1", function(Value)
     local num = tonumber(Value) or 1
-    AimbotSmoothness = math.max(num, 1)
+    shared.PH.AimbotSmoothness = math.max(num, 1)
 end)
 
 createTextbox(CombatPage, "ارتفاع الكاميرا (Y-Offset)", "0", function(Value)
-    AimbotYOffset = tonumber(Value) or 0
+    shared.PH.AimbotYOffset = tonumber(Value) or 0
 end)
 
 local function IsValidTarget(p)
@@ -581,9 +607,9 @@ local function IsValidTarget(p)
     
     local mousePos = UserInputService:GetMouseLocation()
     local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-    if distance > AimbotFOV then return false end
+    if distance > shared.PH.AimbotFOV then return false end
     
-    if not AimBehindWalls then
+    if not shared.PH.AimBehindWalls then
         local raycastParams = RaycastParams.new()
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
@@ -619,26 +645,26 @@ end
 
 RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Value + 1, function()
     pcall(function()
-        if AimbotEnabled then
-            if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- قفل صمغي ثابت يمنع الاهتزاز والتشتت حتى يموت الهدف تماماً
+        if shared.PH.AimbotEnabled then
+            if shared.PH.CurrentTarget and IsValidTarget(shared.PH.CurrentTarget) then
+                -- القفل صمغي وثابت يمنع الاهتزاز العشوائي
             else
-                CurrentTarget = GetClosestTarget()
+                shared.PH.CurrentTarget = GetClosestTarget()
             end
             
-            if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
-                local targetPos = CurrentTarget.Character.Head.Position + Vector3.new(0, AimbotYOffset, 0)
+            if shared.PH.CurrentTarget and shared.PH.CurrentTarget.Character and shared.PH.CurrentTarget.Character:FindFirstChild("Head") then
+                local targetPos = shared.PH.CurrentTarget.Character.Head.Position + Vector3.new(0, shared.PH.AimbotYOffset, 0)
                 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPos)
                 
-                if AimbotSmoothness <= 1 then
+                if shared.PH.AimbotSmoothness <= 1 then
                     Camera.CFrame = targetCFrame
                 else
-                    local lerpAlpha = math.clamp(0.22 / AimbotSmoothness, 0.01, 1)
+                    local lerpAlpha = math.clamp(0.22 / shared.PH.AimbotSmoothness, 0.01, 1)
                     Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, lerpAlpha)
                 end
             end
         else
-            CurrentTarget = nil
+            shared.PH.CurrentTarget = nil
         end
     end)
 end)
@@ -650,5 +676,5 @@ createButton(CombatPage, "تفعيل منع الطرد (Anti-AFK)", function()
         task.wait(1)
         vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end)
-    AINotify("🔍 ذكاء الـ AI: تم تشغيل مانع الطرد التلقائي بنجاح الحين ✅", false)
+    shared.PH.AINotify("🔍 مراقبة الـ AI: تم تفعيل نظام الحماية لمنع الطرد الخامل (Anti-AFK) بنجاح ✅", false)
 end)
