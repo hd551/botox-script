@@ -11,26 +11,37 @@ local TargetJump = 50
 local CustomSpeedEnabled = false
 local CustomJumpEnabled = false
 local NoclipEnabled = false
+local currentY = nil -- ميزان الارتفاع للنوكليب العالمي
 
 -- متغيرات الآيم بوت وإعداداته المتقدمة
 local AimbotEnabled = false
 local AimbotFOV = 150
 local AimbotSmoothness = 1
 local AimBehindWalls = false  -- خيار التصويب خلف الجدران
+local AimbotYOffset = 0       -- ميزة التحكم بارتفاع وانخفاض الآيم للمابات المخصصة
 local CurrentTarget = nil     -- نظام حفظ الهدف الحالي لضمان عدم الفصل
 
--- لوب فائق السرعة لتثبيت السرعة والقفز
+-- لوب فائق السرعة لتثبيت السرعة والقفز ومنع الارتداد عند اختراق الجدران
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local hum = LocalPlayer.Character.Humanoid
             local hrp = LocalPlayer.Character.HumanoidRootPart
             
-            if CustomSpeedEnabled then
+            if CustomSpeedEnabled or NoclipEnabled then
                 hum.WalkSpeed = TargetSpeed
-                if hum.MoveDirection.Magnitude > 0 and TargetSpeed > 16 then
-                    local extraSpeed = TargetSpeed - 16
-                    hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
+                if hum.MoveDirection.Magnitude > 0 then
+                    local extraSpeed = 0
+                    if CustomSpeedEnabled and TargetSpeed > 16 then
+                        extraSpeed = TargetSpeed - 16
+                    end
+                    if NoclipEnabled then
+                        -- دفعة تدفق CFrame لمنع الحماية من إرجاع اللاعب للخلف عند عبور الحائط
+                        extraSpeed = extraSpeed + 6
+                    end
+                    if extraSpeed > 0 then
+                        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
+                    end
                 end
             end
             
@@ -42,19 +53,32 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- لوب اختراق الجدران العالمي المطور ليعمل في جميع المابات دون استثناء
+-- لوب اختراق الجدران العالمي المطور (ثبات كامل على الأرض ومنع السقوط)
 RunService.Stepped:Connect(function()
     pcall(function()
-        if NoclipEnabled and LocalPlayer.Character then
-            if LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                -- إجبار محرك الروبلوكس على إلغاء اصطدامات الـ Humanoid بالبيئة المحيطة
-                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Physics)
-            end
+        if NoclipEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            
+            -- إلغاء اصطدام جميع أجزاء الجسم دون التأثير على الجاذبية الدولية
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
                 end
             end
+            
+            -- نظام تثبيت الارتفاع لمنع الهبوط التلقائي وتحت الأرض
+            if hum.Jump then
+                currentY = nil -- السماح بالصعود عند القفز
+            else
+                if not currentY then 
+                    currentY = hrp.Position.Y 
+                end
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+                hrp.CFrame = CFrame.new(hrp.Position.X, currentY, hrp.Position.Z) * hrp.CFrame.Rotation
+            end
+        else
+            currentY = nil
         end
     end)
 end)
@@ -130,7 +154,7 @@ for _, page in pairs(pages) do
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
     page.Visible = false
-    page.CanvasSize = UDim2.new(0, 0, 2.5, 0) -- دعم مساحة السكرول للخيارات الإضافية
+    page.CanvasSize = UDim2.new(0, 0, 2.8, 0) -- زيادة مساحة السكرول لتستوعب الخصائص الإضافية بشكل مريح
     page.ScrollBarThickness = 4
     
     local layout = Instance.new("UIListLayout")
@@ -261,7 +285,6 @@ local function createButton(parent, text, callback)
     
     btn.MouseButton1Click:Connect(callback)
 end
-
 -----------------------------------------------------------------------------------------
 -- [1. خانة الحركة]
 -----------------------------------------------------------------------------------------
@@ -357,7 +380,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال] - إصلاح نظام ثبات الآيم بوت بالكامل وإضافة التوجل الجديد للجدران
+-- [3. خانة القتال] - مضاف إليها ميزة الارتفاع الرأسي للآيم بوت الجديد وعلاج النوكليب
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -415,7 +438,12 @@ createTextbox(CombatPage, "سلاسة الآيم (Smoothness)", "1", function(Va
     AimbotSmoothness = math.max(num, 1)
 end)
 
--- دالة فحص وتأكيد صلاحية الهدف الحالي (شاملة فحص المسافة والوفاة والجدران)
+-- إضافة إعداد تعديل ارتفاع الآيم (Y-Offset) الجديد بدون لمس تصميم الواجهة
+createTextbox(CombatPage, "ارتفاع الكاميرا (Y-Offset)", "0", function(Value)
+    AimbotYOffset = tonumber(Value) or 0
+end)
+
+-- دالة فحص وتأكيد صلاحية الهدف الحالي
 local function IsValidTarget(p)
     if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") or not p.Character:FindFirstChildOfClass("Humanoid") then
         return false
@@ -429,7 +457,6 @@ local function IsValidTarget(p)
     local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
     if distance > AimbotFOV then return false end
     
-    -- فحص الجدران الفوري إذا كان الخيار معطلاً
     if not AimBehindWalls then
         local raycastParams = RaycastParams.new()
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -437,13 +464,13 @@ local function IsValidTarget(p)
         
         local rayDirection = p.Character.HumanoidRootPart.Position - Camera.CFrame.Position
         local raycastResult = workspace:Raycast(Camera.CFrame.Position, rayDirection, raycastParams)
-        if raycastResult then return false end -- يوجد جدار يحجب الرؤية
+        if raycastResult then return false end
     end
     
     return true
 end
 
--- دالة البحث عن أقرب هدف جديد عند الحاجة فقط
+-- دالة البحث عن أقرب هدف جديد
 local function GetClosestTarget()
     local ClosestPlayer = nil
     local ShortestDistance = math.huge
@@ -462,25 +489,25 @@ local function GetClosestTarget()
     return ClosestPlayer
 end
 
--- كود تتبع وتثبيت الكاميرا السلس والمستمر بدون انقطاع أثناء القتال
+-- كود تتبع وتثبيت الكاميرا السلس والمستمر مع دمج قيمة الـ Y-Offset المخصصة للمابات
 RunService.RenderStepped:Connect(function()
     pcall(function()
         if AimbotEnabled then
-            -- الحفاظ على القفل الذكي (Target Lock) للهدف الحالي لتفادي أي فصل عند التحرك أو الإطلاق
             if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- الهدف لا يزال صالحاً، استمر بالتثبيت عليه
+                -- الهدف مقفل ومستقر
             else
                 CurrentTarget = GetClosestTarget()
             end
             
             if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
-                local targetPos = CurrentTarget.Character.Head.Position
+                -- دمج الارتفاع المكتوب في خانة الـ Y-Offset لمعادلة كاميرا الماب تلقائياً
+                local targetPos = CurrentTarget.Character.Head.Position + Vector3.new(0, AimbotYOffset, 0)
                 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPos)
                 
                 if AimbotSmoothness <= 1 then
-                    Camera.CFrame = targetCFrame -- سريع وخارق
+                    Camera.CFrame = targetCFrame
                 else
-                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness) -- سلس وناعم
+                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness)
                 end
             end
         else
