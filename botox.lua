@@ -1,4 +1,4 @@
--- Phoenix Hub - التحديث الجديد والمصلح بالكامل (Aimbot Lock & Universal Noclip)
+-- Phoenix Hub - التحديث الفوري والنهائي (Anti-Shake, Proximity Target & Free Noclip)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -11,17 +11,16 @@ local TargetJump = 50
 local CustomSpeedEnabled = false
 local CustomJumpEnabled = false
 local NoclipEnabled = false
-local currentY = nil -- ميزان الارتفاع للنوكليب العالمي
 
 -- متغيرات الآيم بوت وإعداداته المتقدمة
 local AimbotEnabled = false
 local AimbotFOV = 150
 local AimbotSmoothness = 1
-local AimBehindWalls = false  -- خيار التصويب خلف الجدران
-local AimbotYOffset = 0       -- ميزة التحكم بارتفاع وانخفاض الآيم للمابات المخصصة
-local CurrentTarget = nil     -- نظام حفظ الهدف الحالي لضمان عدم الفصل
+local AimBehindWalls = false  
+local AimbotYOffset = 0       
+local CurrentTarget = nil     
 
--- لوب فائق السرعة لتثبيت السرعة والقفز ومنع الارتداد عند اختراق الجدران
+-- لوب فائق السرعة لتثبيت السرعة والقفز ومنع الارتداد
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -36,8 +35,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
                         extraSpeed = TargetSpeed - 16
                     end
                     if NoclipEnabled then
-                        -- دفعة تدفق CFrame لمنع الحماية من إرجاع اللاعب للخلف عند عبور الحائط
-                        extraSpeed = extraSpeed + 6
+                        extraSpeed = extraSpeed + 6 -- دفعة تدفق تمنع الحماية من إرجاعك للخلف
                     end
                     if extraSpeed > 0 then
                         hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
@@ -53,32 +51,46 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- لوب اختراق الجدران العالمي المطور (ثبات كامل على الأرض ومنع السقوط)
+-- لوب اختراق الجدران العالمي المطور (دعم كامل للقفز، السقوط الطبيعي، والمصاعد المتحركة)
 RunService.Stepped:Connect(function()
     pcall(function()
-        if NoclipEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        if NoclipEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = LocalPlayer.Character.HumanoidRootPart
             local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             
-            -- إلغاء اصطدام جميع أجزاء الجسم دون التأثير على الجاذبية الدولية
+            -- إلغاء اصطدام جميع أجزاء الجسم لاختراق الحوائط
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
                 end
             end
             
-            -- نظام تثبيت الارتفاع لمنع الهبوط التلقائي وتحت الأرض
-            if hum.Jump then
-                currentY = nil -- السماح بالصعود عند القفز
-            else
-                if not currentY then 
-                    currentY = hrp.Position.Y 
+            -- نظام الفحص السفلي الذكي لضمان التفاعل مع الأرضيات والمصاعد طبيعياً
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            
+            local rayOrigin = hrp.Position
+            local rayDirection = Vector3.new(0, -4.5, 0) -- فحص مسافة الأرضية تحت الأقدام
+            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            
+            if raycastResult then
+                local hitPart = raycastResult.Instance
+                local hitPos = raycastResult.Position
+                
+                -- إذا كان اللاعب يضغط قفز أو اللعبة ترفعه، نترك الجاذبية والفيزكس تصعد به حرّاً
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump) then
+                    -- السماح بالقفز الحر
+                else
+                    -- الثبات فوق الأرضية أو المصعد ومجاراة سرعته الرأسية لعدم السقوط عبره
+                    local targetY = hitPos.Y + 3.2
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, hitPart.Velocity.Y, hrp.Velocity.Z)
+                    hrp.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z) * hrp.CFrame.Rotation
                 end
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
-                hrp.CFrame = CFrame.new(hrp.Position.X, currentY, hrp.Position.Z) * hrp.CFrame.Rotation
+            else
+                -- في حال عدم وجود أرضية (سقوط من شاهق)، دعه يهبط طبيعياً حتى يمسك بأقرب سطح
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y - 0.5, hrp.Velocity.Z)
             end
-        else
-            currentY = nil
         end
     end)
 end)
@@ -154,7 +166,7 @@ for _, page in pairs(pages) do
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
     page.Visible = false
-    page.CanvasSize = UDim2.new(0, 0, 2.8, 0) -- زيادة مساحة السكرول لتستوعب الخصائص الإضافية بشكل مريح
+    page.CanvasSize = UDim2.new(0, 0, 2.8, 0)
     page.ScrollBarThickness = 4
     
     local layout = Instance.new("UIListLayout")
@@ -190,9 +202,6 @@ ToggleButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
------------------------------------------------------------------------------------------
--- دوال التصميم الداخلي الثابتة
------------------------------------------------------------------------------------------
 local function createTextbox(parent, text, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.95, 0, 0, 40)
@@ -222,9 +231,7 @@ local function createTextbox(parent, text, default, callback)
     box.Font = Enum.Font.SourceSansBold
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
     
-    box.FocusLost:Connect(function()
-        callback(box.Text)
-    end)
+    box.FocusLost:Connect(function() callback(box.Text) end)
 end
 
 local function createToggle(parent, text, callback)
@@ -282,7 +289,6 @@ local function createButton(parent, text, callback)
     btn.Font = Enum.Font.SourceSansBold
     btn.Parent = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
     btn.MouseButton1Click:Connect(callback)
 end
 -----------------------------------------------------------------------------------------
@@ -380,7 +386,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال] - مضاف إليها ميزة الارتفاع الرأسي للآيم بوت الجديد وعلاج النوكليب
+-- [3. خانة القتال المطور بالكامل ضد الاهتزاز ومع أولوية المسافة الجسدية]
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -438,12 +444,11 @@ createTextbox(CombatPage, "سلاسة الآيم (Smoothness)", "1", function(Va
     AimbotSmoothness = math.max(num, 1)
 end)
 
--- إضافة إعداد تعديل ارتفاع الآيم (Y-Offset) الجديد بدون لمس تصميم الواجهة
 createTextbox(CombatPage, "ارتفاع الكاميرا (Y-Offset)", "0", function(Value)
     AimbotYOffset = tonumber(Value) or 0
 end)
 
--- دالة فحص وتأكيد صلاحية الهدف الحالي
+-- دالة فحص وتأكيد صلاحية الهدف الحالي داخل نطاق الرؤية والجدران
 local function IsValidTarget(p)
     if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") or not p.Character:FindFirstChildOfClass("Humanoid") then
         return false
@@ -470,18 +475,22 @@ local function IsValidTarget(p)
     return true
 end
 
--- دالة البحث عن أقرب هدف جديد
+-- دالة البحث عن الهدف الأقرب جسدياً (Studs Distance) لحمايتك من الأعداء القريبين
 local function GetClosestTarget()
     local ClosestPlayer = nil
-    local ShortestDistance = math.huge
-    local mousePos = UserInputService:GetMouseLocation()
+    local Shortest3DDistance = math.huge
+
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then 
+        return nil 
+    end
+    local myPosition = LocalPlayer.Character.HumanoidRootPart.Position
 
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and IsValidTarget(p) then
-            local pos = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-            local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-            if distance < ShortestDistance then
-                ShortestDistance = distance
+            -- حساب المسافة الحقيقية بالأمتار (Studs) بينك وبينه بدلاً من حساب مكانه في الشاشة
+            local target3DDistance = (p.Character.HumanoidRootPart.Position - myPosition).Magnitude
+            if target3DDistance < Shortest3DDistance then
+                Shortest3DDistance = target3DDistance
                 ClosestPlayer = p
             end
         end
@@ -489,18 +498,17 @@ local function GetClosestTarget()
     return ClosestPlayer
 end
 
--- كود تتبع وتثبيت الكاميرا السلس والمستمر مع دمج قيمة الـ Y-Offset المخصصة للمابات
-RunService.RenderStepped:Connect(function()
+-- كود القفل السلس فائق القوة (BindToRenderStep) لإنهاء الرعشة والاهتزاز بشكل قطعي
+RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Value + 1, function()
     pcall(function()
         if AimbotEnabled then
             if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- الهدف مقفل ومستقر
+                -- الحفاظ على الهدف المقفل حالياً
             else
                 CurrentTarget = GetClosestTarget()
             end
             
             if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
-                -- دمج الارتفاع المكتوب في خانة الـ Y-Offset لمعادلة كاميرا الماب تلقائياً
                 local targetPos = CurrentTarget.Character.Head.Position + Vector3.new(0, AimbotYOffset, 0)
                 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPos)
                 
