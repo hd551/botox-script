@@ -1,4 +1,4 @@
--- Phoenix Hub - التحديث الفوري والنهائي (Anti-Shake, Proximity Target & Free Noclip)
+-- Phoenix Hub - التحديث الآمن ضد الطرد والاهتزاز (Sticky Lock & Physics Noclip)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -18,9 +18,9 @@ local AimbotFOV = 150
 local AimbotSmoothness = 1
 local AimBehindWalls = false  
 local AimbotYOffset = 0       
-local CurrentTarget = nil     
+local CurrentTarget = nil     -- نظام حفظ التهديد الحالي ومنع التنقل العشوائي
 
--- لوب فائق السرعة لتثبيت السرعة والقفز ومنع الارتداد
+-- لوب السرعة والقفز الآمن
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -35,7 +35,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
                         extraSpeed = TargetSpeed - 16
                     end
                     if NoclipEnabled then
-                        extraSpeed = extraSpeed + 6 -- دفعة تدفق تمنع الحماية من إرجاعك للخلف
+                        extraSpeed = extraSpeed + 4
                     end
                     if extraSpeed > 0 then
                         hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (extraSpeed * deltaTime))
@@ -51,45 +51,15 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- لوب اختراق الجدران العالمي المطور (دعم كامل للقفز، السقوط الطبيعي، والمصاعد المتحركة)
+-- نوكليب نقي 100% يعتمد على الفيزياء فقط (بدون تعديل CFrame) لمنع كشف الحماية وطرد السيرفر
 RunService.Stepped:Connect(function()
     pcall(function()
-        if NoclipEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = LocalPlayer.Character.HumanoidRootPart
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            
-            -- إلغاء اصطدام جميع أجزاء الجسم لاختراق الحوائط
+        if NoclipEnabled and LocalPlayer.Character then
+            -- إلغاء اصطدام أجزاء الجسم فقط، مما يسمح بالقفز والمصاعد والسقوط الطبيعي دون تعليق
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
+                if part:IsA("BasePart") and part.CanCollide then
                     part.CanCollide = false
                 end
-            end
-            
-            -- نظام الفحص السفلي الذكي لضمان التفاعل مع الأرضيات والمصاعد طبيعياً
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-            
-            local rayOrigin = hrp.Position
-            local rayDirection = Vector3.new(0, -4.5, 0) -- فحص مسافة الأرضية تحت الأقدام
-            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-            
-            if raycastResult then
-                local hitPart = raycastResult.Instance
-                local hitPos = raycastResult.Position
-                
-                -- إذا كان اللاعب يضغط قفز أو اللعبة ترفعه، نترك الجاذبية والفيزكس تصعد به حرّاً
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump) then
-                    -- السماح بالقفز الحر
-                else
-                    -- الثبات فوق الأرضية أو المصعد ومجاراة سرعته الرأسية لعدم السقوط عبره
-                    local targetY = hitPos.Y + 3.2
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, hitPart.Velocity.Y, hrp.Velocity.Z)
-                    hrp.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z) * hrp.CFrame.Rotation
-                end
-            else
-                -- في حال عدم وجود أرضية (سقوط من شاهق)، دعه يهبط طبيعياً حتى يمسك بأقرب سطح
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y - 0.5, hrp.Velocity.Z)
             end
         end
     end)
@@ -120,7 +90,7 @@ ToggleButton.ZIndex = 10
 BtnCorner.CornerRadius = UDim.new(0, 28)
 BtnCorner.Parent = ToggleButton
 
--- 3. اللوحة الرئيسية للسكربت (نفس الشكل والحجم والألوان تماماً ليرضى المتابعين)
+-- 3. اللوحة الرئيسية للسكربت
 local MainFrame = Instance.new("Frame")
 local MainCorner = Instance.new("UICorner")
 MainFrame.Name = "MainFrame"
@@ -386,7 +356,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال المطور بالكامل ضد الاهتزاز ومع أولوية المسافة الجسدية]
+-- [3. خانة القتال المطور بنظام القفل الثابت ومنع الرعشة بالكامل]
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -448,7 +418,7 @@ createTextbox(CombatPage, "ارتفاع الكاميرا (Y-Offset)", "0", funct
     AimbotYOffset = tonumber(Value) or 0
 end)
 
--- دالة فحص وتأكيد صلاحية الهدف الحالي داخل نطاق الرؤية والجدران
+-- دالة التأكد من صلاحية الهدف واستمراريته داخل نطاق الشاشة
 local function IsValidTarget(p)
     if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") or not p.Character:FindFirstChildOfClass("Humanoid") then
         return false
@@ -475,7 +445,7 @@ local function IsValidTarget(p)
     return true
 end
 
--- دالة البحث عن الهدف الأقرب جسدياً (Studs Distance) لحمايتك من الأعداء القريبين
+-- دالة البحث عن اللاعب الأقرب جسدياً فقط عند عدم وجود هدف مقفل حالياً
 local function GetClosestTarget()
     local ClosestPlayer = nil
     local Shortest3DDistance = math.huge
@@ -487,7 +457,6 @@ local function GetClosestTarget()
 
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and IsValidTarget(p) then
-            -- حساب المسافة الحقيقية بالأمتار (Studs) بينك وبينه بدلاً من حساب مكانه في الشاشة
             local target3DDistance = (p.Character.HumanoidRootPart.Position - myPosition).Magnitude
             if target3DDistance < Shortest3DDistance then
                 Shortest3DDistance = target3DDistance
@@ -498,13 +467,15 @@ local function GetClosestTarget()
     return ClosestPlayer
 end
 
--- كود القفل السلس فائق القوة (BindToRenderStep) لإنهاء الرعشة والاهتزاز بشكل قطعي
+-- لوب القفل المحكم والمعادلة الانسيابية لامتصاص الرعشة أثناء إطلاق النار والحركة في الجوال
 RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Value + 1, function()
     pcall(function()
         if AimbotEnabled then
+            -- نظام التثبيت الصمغي: إذا كان الهدف القديم لا يزال صالحاً وقريباً، لا تغيره أبداً لتفادي التشتت
             if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- الحفاظ على الهدف المقفل حالياً
+                -- الاستمرار في تتبع نفس الهدف
             else
+                -- البحث عن هدف جديد فقط إذا مات القديم أو ابتعد
                 CurrentTarget = GetClosestTarget()
             end
             
@@ -515,7 +486,9 @@ RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Va
                 if AimbotSmoothness <= 1 then
                     Camera.CFrame = targetCFrame
                 else
-                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness)
+                    -- معادلة تصفية الاهتزاز الرقمي المستقرة لمعالجات الهواتف والـ Delta Executor
+                    local lerpAlpha = math.clamp(0.22 / AimbotSmoothness, 0.01, 1)
+                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, lerpAlpha)
                 end
             end
         else
