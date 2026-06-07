@@ -1,4 +1,4 @@
--- Phoenix Hub - النسخة المطورة لديسكورد (تحميل فوري 100% مع Aimbot ذكي و Noclip)
+-- Phoenix Hub - التحديث الجديد والمصلح بالكامل (Aimbot Lock & Universal Noclip)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -12,15 +12,16 @@ local CustomSpeedEnabled = false
 local CustomJumpEnabled = false
 local NoclipEnabled = false
 
--- متغيرات الآيم بوت وإعداداته
+-- متغيرات الآيم بوت وإعداداته المتقدمة
 local AimbotEnabled = false
 local AimbotFOV = 150
 local AimbotSmoothness = 1
+local AimBehindWalls = false  -- خيار التصويب خلف الجدران
+local CurrentTarget = nil     -- نظام حفظ الهدف الحالي لضمان عدم الفصل
 
--- لوب فائق السرعة لتجاوز الحماية واختراق الجدران وتثبيت السرعة
+-- لوب فائق السرعة لتثبيت السرعة والقفز
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
-        -- تشغيل السرعة وقوة القفز
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local hum = LocalPlayer.Character.Humanoid
             local hrp = LocalPlayer.Character.HumanoidRootPart
@@ -41,10 +42,14 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- لوب منفصل خاص بالاختراق (Noclip) لمنع التعليق
+-- لوب اختراق الجدران العالمي المطور ليعمل في جميع المابات دون استثناء
 RunService.Stepped:Connect(function()
     pcall(function()
         if NoclipEnabled and LocalPlayer.Character then
+            if LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                -- إجبار محرك الروبلوكس على إلغاء اصطدامات الـ Humanoid بالبيئة المحيطة
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Physics)
+            end
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
@@ -79,7 +84,7 @@ ToggleButton.ZIndex = 10
 BtnCorner.CornerRadius = UDim.new(0, 28)
 BtnCorner.Parent = ToggleButton
 
--- 3. اللوحة الرئيسية للسكربت (نفس الشكل والحجم تماماً)
+-- 3. اللوحة الرئيسية للسكربت (نفس الشكل والحجم والألوان تماماً ليرضى المتابعين)
 local MainFrame = Instance.new("Frame")
 local MainCorner = Instance.new("UICorner")
 MainFrame.Name = "MainFrame"
@@ -125,7 +130,7 @@ for _, page in pairs(pages) do
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
     page.Visible = false
-    page.CanvasSize = UDim2.new(0, 0, 2.2, 0) -- زيادة مساحة السكرول للميزات الجديدة
+    page.CanvasSize = UDim2.new(0, 0, 2.5, 0) -- دعم مساحة السكرول للخيارات الإضافية
     page.ScrollBarThickness = 4
     
     local layout = Instance.new("UIListLayout")
@@ -258,7 +263,7 @@ local function createButton(parent, text, callback)
 end
 
 -----------------------------------------------------------------------------------------
--- [1. خانة الحركة] - مضاف إليها ميزة اختراق الجدران (Noclip)
+-- [1. خانة الحركة]
 -----------------------------------------------------------------------------------------
 createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
     local num = tonumber(Value)
@@ -352,7 +357,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال] - مضاف إليها الهيت بوكس المستمر والآيم بوت الذكي مع الـ Wall Check
+-- [3. خانة القتال] - إصلاح نظام ثبات الآيم بوت بالكامل وإضافة التوجل الجديد للجدران
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -366,7 +371,6 @@ createToggle(CombatPage, "تفعيل تكبير الهيت بوكس", function(V
     HitboxEnabled = Value
 end)
 
--- لوب الهيت بوكس المستمر
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if HitboxEnabled then
@@ -394,9 +398,12 @@ RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- إضافة عناصر تحكم الآيم بوت الجديدة
 createToggle(CombatPage, "تفعيل الآيم بوت (Aimbot)", function(Value)
     AimbotEnabled = Value
+end)
+
+createToggle(CombatPage, "الآيم خلف الجدران", function(Value)
+    AimBehindWalls = Value
 end)
 
 createTextbox(CombatPage, "مسافة رؤية الآيم (FOV)", "150", function(Value)
@@ -405,57 +412,79 @@ end)
 
 createTextbox(CombatPage, "سلاسة الآيم (Smoothness)", "1", function(Value)
     local num = tonumber(Value) or 1
-    AimbotSmoothness = math.max(num, 1) -- منع القيمة من النزول عن 1 لتفادي المشاكل
+    AimbotSmoothness = math.max(num, 1)
 end)
 
--- دالة البحث عن أقرب لاعب مكشوف (جاهزة للتخطي خلف الجدران)
-local function GetClosestVisiblePlayer()
+-- دالة فحص وتأكيد صلاحية الهدف الحالي (شاملة فحص المسافة والوفاة والجدران)
+local function IsValidTarget(p)
+    if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") or not p.Character:FindFirstChildOfClass("Humanoid") then
+        return false
+    end
+    if p.Character.Humanoid.Health <= 0 then return false end
+    
+    local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+    if not onScreen then return false end
+    
+    local mousePos = UserInputService:GetMouseLocation()
+    local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+    if distance > AimbotFOV then return false end
+    
+    -- فحص الجدران الفوري إذا كان الخيار معطلاً
+    if not AimBehindWalls then
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
+        
+        local rayDirection = p.Character.HumanoidRootPart.Position - Camera.CFrame.Position
+        local raycastResult = workspace:Raycast(Camera.CFrame.Position, rayDirection, raycastParams)
+        if raycastResult then return false end -- يوجد جدار يحجب الرؤية
+    end
+    
+    return true
+end
+
+-- دالة البحث عن أقرب هدف جديد عند الحاجة فقط
+local function GetClosestTarget()
     local ClosestPlayer = nil
     local ShortestDistance = math.huge
+    local mousePos = UserInputService:GetMouseLocation()
 
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-            if onScreen then
-                local mousePos = UserInputService:GetMouseLocation()
-                local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                
-                if distance < AimbotFOV and distance < ShortestDistance then
-                    -- نظام الـ Wall Check الذكي عبر فحص الأشعة المباشرة
-                    local raycastParams = RaycastParams.new()
-                    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-                    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
-                    
-                    local rayDirection = p.Character.HumanoidRootPart.Position - Camera.CFrame.Position
-                    local raycastResult = workspace:Raycast(Camera.CFrame.Position, rayDirection, raycastParams)
-                    
-                    -- إذا لم يعترض أي جدار أو عائق طريق الرؤية، يتم اعتماده كهدف
-                    if not raycastResult then
-                        ShortestDistance = distance
-                        ClosestPlayer = p
-                    end
-                end
+        if p ~= LocalPlayer and IsValidTarget(p) then
+            local pos = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+            local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+            if distance < ShortestDistance then
+                ShortestDistance = distance
+                ClosestPlayer = p
             end
         end
     end
     return ClosestPlayer
 end
 
--- كود توجيه الكاميرا اللحظي والسلس للآيم بوت
+-- كود تتبع وتثبيت الكاميرا السلس والمستمر بدون انقطاع أثناء القتال
 RunService.RenderStepped:Connect(function()
     pcall(function()
         if AimbotEnabled then
-            local target = GetClosestVisiblePlayer()
-            if target and target.Character and target.Character:FindFirstChild("Head") then
-                local targetPos = target.Character.Head.Position
+            -- الحفاظ على القفل الذكي (Target Lock) للهدف الحالي لتفادي أي فصل عند التحرك أو الإطلاق
+            if CurrentTarget and IsValidTarget(CurrentTarget) then
+                -- الهدف لا يزال صالحاً، استمر بالتثبيت عليه
+            else
+                CurrentTarget = GetClosestTarget()
+            end
+            
+            if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
+                local targetPos = CurrentTarget.Character.Head.Position
                 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPos)
                 
                 if AimbotSmoothness <= 1 then
-                    Camera.CFrame = targetCFrame
+                    Camera.CFrame = targetCFrame -- سريع وخارق
                 else
-                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness)
+                    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness) -- سلس وناعم
                 end
             end
+        else
+            CurrentTarget = nil
         end
     end)
 end)
