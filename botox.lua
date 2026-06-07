@@ -1,4 +1,4 @@
--- Phoenix Hub - تحديث الـ AI الحامي وجدار الحماية التكيفي مع الـ RGB المطور
+-- Phoenix Hub - إصدار الـ AI الذكي مع الإشعارات المطورة (أسود، أحمر، أبيض)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -22,12 +22,10 @@ local AimbotYOffset = 0
 local CurrentTarget = nil     
 
 -- [نظام ذكاء الـ AI وتحليل حماية المابات]
-local MapAntiCheatLevel = "Low" -- مستويات الحماية: Low, Medium, High
+local MapAntiCheatLevel = "Low"
 local CurrentPlaceId = game.PlaceId
 
--- دالة الـ AI لفحص الماب تلقائياً عند التشغيل
 local function AIScanMap()
-    -- أمثلة لمابات مشهورة بحمايتها الصارمة (يمكنك إضافة أي ID ماب هنا)
     if CurrentPlaceId == 2753915549 or CurrentPlaceId == 4442272121 or CurrentPlaceId == 7465535914 then
         MapAntiCheatLevel = "High"
     elseif CurrentPlaceId == 155615604 or CurrentPlaceId == 6068016518 then
@@ -38,13 +36,13 @@ local function AIScanMap()
 end
 AIScanMap()
 
--- 1. إنشاء الـ GUI الأساسي وحفظه في مكان آمن بالجوال
+-- 1. إنشاء الـ GUI الأساسي وحفظه في مكان آمن
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "PhoenixHub_AI_Edition"
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- [إنشاء صندوق إشعارات الـ AI الجانبي]
+-- [بناء صندوق إشعارات الـ AI بالثيم الجديد: أسود، أحمر، أبيض]
 local NotifyFrame = Instance.new("Frame")
 local NotifyCorner = Instance.new("UICorner")
 local NotifyText = Instance.new("TextLabel")
@@ -52,48 +50,51 @@ local NotifyUIStroke = Instance.new("UIStroke")
 
 NotifyFrame.Name = "AINotifyFrame"
 NotifyFrame.Parent = ScreenGui
-NotifyFrame.Size = UDim2.new(0, 280, 0, 65)
-NotifyFrame.Position = UDim2.new(1, 300, 0, 20) -- يبدأ مخفي خارج الشاشة لعمل أنيميشن دخول وخروج
-NotifyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+NotifyFrame.Size = UDim2.new(0, 310, 0, 80) -- حجم أكبر لمنع اختفاء النصوص الطويلة في الجوال
+NotifyFrame.Position = UDim2.new(1, 320, 0, 20) 
+NotifyFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- أسود خالص
 NotifyFrame.ZIndex = 11
-NotifyCorner.CornerRadius = UDim.new(0, 8)
+NotifyFrame.ClipsDescendants = false
+
+NotifyCorner.CornerRadius = UDim.new(0, 6)
 NotifyCorner.Parent = NotifyFrame
 
+NotifyUIStroke.Name = "NotifyUIStroke"
 NotifyUIStroke.Parent = NotifyFrame
-NotifyUIStroke.Thickness = 1.5
-NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
+NotifyUIStroke.Thickness = 2 
+NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- أبيض أساسي
 
+NotifyText.Name = "NotifyText"
 NotifyText.Parent = NotifyFrame
 NotifyText.Size = UDim2.new(1, -20, 1, -10)
 NotifyText.Position = UDim2.new(0, 10, 0, 5)
 NotifyText.BackgroundTransparency = 1
 NotifyText.Font = Enum.Font.SourceSansBold
-NotifyText.TextSize = 13
-NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255)
+NotifyText.TextSize = 14 -- خط عريض وواضح للقراءة للمتابعين
+NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- أبيض ناصع
 NotifyText.TextWrapped = true
+NotifyText.ZIndex = 12 
 NotifyText.TextXAlignment = Enum.TextXAlignment.Center
 
--- دالة إرسال تنبيهات الـ AI الاحترافية مع أنيميشن سلس وبدون تعليق
+-- دالة إرسال تنبيهات الـ AI بالألوان الثلاثية
 local function AINotify(message, isWarning)
     NotifyText.Text = message
     if isWarning then
-        NotifyUIStroke.Color = Color3.fromRGB(255, 50, 50)
-        NotifyText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        NotifyUIStroke.Color = Color3.fromRGB(255, 0, 0) -- حافة حمراء حادة عند الخطر
     else
-        NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
-        NotifyText.TextColor3 = Color3.fromRGB(200, 255, 200)
+        NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- حافة بيضاء نقية في الوضع السليم
     end
+    NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- النص دائماً أبيض لضمان أعلى وضوح على الخلفية السوداء
     
-    -- أنيميشن دخول اللوحة الجانبية
-    NotifyFrame:TweenPosition(UDim2.new(1, -300, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
+    NotifyFrame:TweenPosition(UDim2.new(1, -330, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
     
     task.spawn(function()
-        task.wait(4.5) -- يبقى ظاهر 4 ثواني ونصف ثم يختفي
-        NotifyFrame:TweenPosition(UDim2.new(1, 300, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
+        task.wait(5) -- تظل 5 ثواني كاملة ليتمكن المشاهد من قراءتها
+        NotifyFrame:TweenPosition(UDim2.new(1, 320, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
     end)
 end
 
--- 2. تصميم الزر العائم (PH) وجعله يظهر دائماً فوق القائمة
+-- 2. تصميم الزر العائم (PH)
 local ToggleButton = Instance.new("TextButton")
 local BtnCorner = Instance.new("UICorner")
 local BtnStroke = Instance.new("UIStroke")
@@ -131,9 +132,9 @@ MainCorner.Parent = MainFrame
 MainStroke.Parent = MainFrame
 MainStroke.Thickness = 1.8
 
--- [لوب تشغيل تأثير الـ RGB الانسيابي الفخم على الحواف والأزرار لزيادة الحماس]
+-- تأثير الـ RGB الانسيابي على إطار اللوحة الرئيسية والزر فقط لزيادة الحماس للبثوث
 RunService.RenderStepped:Connect(function()
-    local hue = (tick() % 6) / 6 -- سرعة دوران الألوان المتناسقة
+    local hue = (tick() % 6) / 6
     local chromaColor = Color3.fromHSV(hue, 0.9, 1)
     MainStroke.Color = chromaColor
     BtnStroke.Color = chromaColor
@@ -151,7 +152,7 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = Title
 
--- رسالة الترحيب وفحص الـ AI الأولية للماب فور تشغيل السكربت
+-- فحص الـ AI الأولية للماب فور تشغيل السكربت
 task.spawn(function()
     task.wait(1)
     if MapAntiCheatLevel == "High" then
@@ -163,7 +164,7 @@ task.spawn(function()
     end
 end)
 
--- لوب السرعة المطور والمدمج معه جدار حماية الـ AI التكيفي ضد الطرد والتعليق
+-- لوب السرعة وجدار حماية الـ AI التكيفي ضد الطرد
 RunService.Heartbeat:Connect(function(deltaTime)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -171,7 +172,6 @@ RunService.Heartbeat:Connect(function(deltaTime)
             local hrp = LocalPlayer.Character.HumanoidRootPart
             
             if CustomSpeedEnabled or NoclipEnabled then
-                -- إذا كانت حماية الماب قوية وقام اللاعب برفع السرعة، يتدخل الـ AI لكسر النبضات وتمريرها بأمان
                 if MapAntiCheatLevel == "High" and TargetSpeed > 35 then
                     -- تفعيل حماية تذبذب النبضات الفيزيائية لإخفاء التلاعب عن السيرفر
                     hum.WalkSpeed = math.random(20, 28) 
@@ -179,7 +179,6 @@ RunService.Heartbeat:Connect(function(deltaTime)
                         hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (8 * deltaTime))
                     end
                 else
-                    -- الماب آمن أو السرعة معقولة، يتم تطبيقها بالكامل
                     hum.WalkSpeed = TargetSpeed
                     if hum.MoveDirection.Magnitude > 0 and CustomSpeedEnabled and TargetSpeed > 16 then
                         local extraSpeed = TargetSpeed - 16
@@ -196,7 +195,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end)
 end)
 
--- نوكليب فيزيائي نقي وآمن 100% متوافق مع قفز الجوال والمصاعد بدون طرد
+-- نوكليب فيزيائي نقي وآمن 100% متوافق مع قفز الجوال
 RunService.Stepped:Connect(function()
     pcall(function()
         if NoclipEnabled and LocalPlayer.Character then
@@ -209,7 +208,7 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- أنيميشن فتح وإغلاق اللوحة الرئيسية بشكل احترافي ناعم جداً
+-- أنيميشن فتح وإغلاق اللوحة
 ToggleButton.MouseButton1Click:Connect(function()
     if MainFrame.Visible then
         MainFrame:TweenSize(UDim2.new(0, 350, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
@@ -276,7 +275,7 @@ createTabBtn("الحركة والـ AI", UDim2.new(0, 0, 0, 0), MovePage)
 createTabBtn("الرؤية (ESP)", UDim2.new(0.333, 0, 0, 0), VisPage)
 createTabBtn("القتال المحكم", UDim2.new(0.666, 0, 0, 0), CombatPage)
 -----------------------------------------------------------------------------------------
--- دوال بناء أجزاء القوائم والـ UI الداخلي
+-- دوال بناء عناصر القائمة الداخلي
 -----------------------------------------------------------------------------------------
 local function createTextbox(parent, text, default, callback)
     local frame = Instance.new("Frame")
@@ -302,7 +301,7 @@ local function createTextbox(parent, text, default, callback)
     box.Position = UDim2.new(0.65, 0, 0.15, 0)
     box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     box.Text = default
-    box.TextColor3 = Color3.fromRGB(0, 255, 130)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
     box.TextSize = 13
     box.Font = Enum.Font.SourceSansBold
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
@@ -374,30 +373,31 @@ local function createButton(parent, text, callback)
     btn.MouseButton1Click:Connect(callback)
 end
 
+-- استدعاء عناصر صندوق الإشعارات الجديد للتحكم بالألوان والخطوط بدقة من القسم الثاني
 local ScreenGui = game:GetService("CoreGui") or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 local MainGUIPanel = ScreenGui:WaitForChild("PhoenixHub_AI_Edition")
 local AINotifyFrame = MainGUIPanel:WaitForChild("AINotifyFrame")
-local NotifyText = AINotifyFrame:WaitForChild("TextLabel")
-local NotifyUIStroke = AINotifyFrame:WaitForChild("UIStroke")
+local NotifyText = AINotifyFrame:WaitForChild("NotifyText")
+local NotifyUIStroke = AINotifyFrame:WaitForChild("NotifyUIStroke")
 
 local function AINotify(message, isWarning)
     NotifyText.Text = message
     if isWarning then
-        NotifyUIStroke.Color = Color3.fromRGB(255, 50, 50)
-        NotifyText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        NotifyUIStroke.Color = Color3.fromRGB(255, 0, 0) -- إطار أحمر عند التحذير الصارم
     else
-        NotifyUIStroke.Color = Color3.fromRGB(0, 255, 130)
-        NotifyText.TextColor3 = Color3.fromRGB(200, 255, 200)
+        NotifyUIStroke.Color = Color3.fromRGB(255, 255, 255) -- إطار أبيض عند السلامة والأمان
     end
-    AINotifyFrame:TweenPosition(UDim2.new(1, -300, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
+    NotifyText.TextColor3 = Color3.fromRGB(255, 255, 255) -- النص دائماً باللون الأبيض ليكون فخم ومقروء بالكامل
+    
+    AINotifyFrame:TweenPosition(UDim2.new(1, -330, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.5, true)
     task.spawn(function()
-        task.wait(4.5)
-        AINotifyFrame:TweenPosition(UDim2.new(1, 300, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
+        task.wait(5)
+        AINotifyFrame:TweenPosition(UDim2.new(1, 320, 0, 20), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.5, true)
     end)
 end
 
 -----------------------------------------------------------------------------------------
--- [1. تعبئة خانة الحركة والـ AI] - مع تفعيل جدار الحماية التكيفي والتنبيه الصادق للسرعة
+-- [1. تعبئة عناصر صفحة الحركة والـ AI مع ميزة التنبيهات التكيفية الصادقة والذكية]
 -----------------------------------------------------------------------------------------
 createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
     local num = tonumber(Value)
@@ -405,7 +405,7 @@ createTextbox(MovePage, "تعديل السرعة (Speed)", "16", function(Value)
         TargetSpeed = num 
         CustomSpeedEnabled = true 
         
-        -- نظام تنبيه الـ AI الذكي والصادق حسب قوة حماية الماب الحالي لحمايتك وحماية متابعينك
+        -- نظام الإشعارات الصادقة والذكية المخصصة لحماية المتابعين من الطرد أو البلاغات
         if MapAntiCheatLevel == "High" and num > 30 then
             AINotify("🛡️ جدار حماية الـ AI: الماب حمايته قوية! لا تقلق، قمت بتشغيل خطة الحماية 'التكيفية المتقطعة' لحمايتك من الطرد 🚀", false)
         elseif MapAntiCheatLevel == "High" and num <= 30 then
@@ -442,7 +442,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [2. خانة الرؤية ESP]
+-- [2. عناصر صفحة الرؤية ESP]
 -----------------------------------------------------------------------------------------
 local PlayerESPEnabled = false
 createToggle(VisPage, "كشف اللاعبين (Player ESP)", function(Value)
@@ -508,7 +508,7 @@ task.spawn(function()
 end)
 
 -----------------------------------------------------------------------------------------
--- [3. خانة القتال المطور بنظام القفل الصمغي الثابت]
+-- [3. عناصر صفحة القتال ونظام القفل الصمغي المحكم]
 -----------------------------------------------------------------------------------------
 local HitboxSize = 2
 local HitboxEnabled = false
@@ -621,7 +621,7 @@ RunService:BindToRenderStep("PhoenixAimbotSystem", Enum.RenderPriority.Camera.Va
     pcall(function()
         if AimbotEnabled then
             if CurrentTarget and IsValidTarget(CurrentTarget) then
-                -- الحفاظ على القفل الصمغي الثابت ومنع القفز العشوائي بين الأهداف
+                -- قفل صمغي ثابت يمنع الاهتزاز والتشتت حتى يموت الهدف تماماً
             else
                 CurrentTarget = GetClosestTarget()
             end
